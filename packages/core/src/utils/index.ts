@@ -20,3 +20,16 @@ export {
   redactBody,
   maskValue,
 } from './redact.js';
+
+export {
+  parseTraceparent,
+  formatTraceparent,
+  createTraceContext,
+  createChildContext,
+  generateTraceId,
+  generateSpanId,
+} from './trace-context.js';
+
+export type { TraceContext } from './trace-context.js';
+
+export { RingBuffer } from './ring-buffer.js';

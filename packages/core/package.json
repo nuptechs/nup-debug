@@ -16,7 +16,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist *.tsbuildinfo",
-    "test": "echo 'no tests yet'"
+    "test": "vitest run"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

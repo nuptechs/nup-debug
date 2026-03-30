@@ -3,5 +3,6 @@
 // ============================================================
 
 export { installFetchInterceptor } from './fetch-interceptor.js';
+export { installXhrInterceptor } from './xhr-interceptor.js';
 export { installConsoleInterceptor } from './console-interceptor.js';
 export { installErrorBoundary } from './error-boundary.js';
