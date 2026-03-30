@@ -15,7 +15,7 @@ function getManager(req: Request): SessionManager {
 }
 
 // POST /api/sessions — Create new debug session
-sessionsRouter.post('/', (req: Request, res: Response) => {
+sessionsRouter.post('/', async (req: Request, res: Response) => {
   const manager = getManager(req);
   const body = req.body as { name?: string; config?: SessionConfig; tags?: string[] } | undefined;
 
@@ -23,21 +23,46 @@ sessionsRouter.post('/', (req: Request, res: Response) => {
   const config = body?.config ?? {};
   const tags = body?.tags;
 
-  const session = manager.createSession(name, config, tags);
+  const session = await manager.createSession(name, config, tags);
   res.status(201).json(session);
 });
 
-// GET /api/sessions — List all sessions
-sessionsRouter.get('/', (req: Request, res: Response) => {
+// GET /api/sessions — List all sessions (with pagination)
+sessionsRouter.get('/', async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessions = manager.listSessions();
-  res.json({ sessions, total: sessions.length });
+
+  const limit = Math.min(parseInt(req.query['limit'] as string, 10) || 50, 200);
+  const offset = Math.max(parseInt(req.query['offset'] as string, 10) || 0, 0);
+  const status = req.query['status'] as SessionStatus | undefined;
+  const search = req.query['search'] as string | undefined;
+
+  const allSessions = await manager.listSessions();
+
+  // Apply filters
+  let filtered = allSessions;
+  if (status) {
+    filtered = filtered.filter((s) => s.status === status);
+  }
+  if (search?.trim()) {
+    const q = search.trim().toLowerCase();
+    filtered = filtered.filter(
+      (s) => s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q),
+    );
+  }
+
+  // Sort by startedAt descending (most recent first)
+  filtered.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+
+  const total = filtered.length;
+  const sessions = filtered.slice(offset, offset + limit);
+
+  res.json({ sessions, total });
 });
 
 // GET /api/sessions/:id — Get session details
-sessionsRouter.get('/:id', (req: Request, res: Response) => {
+sessionsRouter.get('/:id', async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const session = manager.getSession(req.params['id'] as string);
+  const session = await manager.getSession(req.params['id'] as string);
 
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
@@ -48,9 +73,9 @@ sessionsRouter.get('/:id', (req: Request, res: Response) => {
 });
 
 // DELETE /api/sessions/:id — Delete session
-sessionsRouter.delete('/:id', (req: Request, res: Response) => {
+sessionsRouter.delete('/:id', async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const deleted = manager.deleteSession(req.params['id'] as string);
+  const deleted = await manager.deleteSession(req.params['id'] as string);
 
   if (!deleted) {
     res.status(404).json({ error: 'Session not found' });
@@ -61,7 +86,7 @@ sessionsRouter.delete('/:id', (req: Request, res: Response) => {
 });
 
 // PATCH /api/sessions/:id/status — Update session status
-sessionsRouter.patch('/:id/status', (req: Request, res: Response) => {
+sessionsRouter.patch('/:id/status', async (req: Request, res: Response) => {
   const manager = getManager(req);
   const body = req.body as { status?: string } | undefined;
   const newStatus = body?.status;
@@ -74,7 +99,7 @@ sessionsRouter.patch('/:id/status', (req: Request, res: Response) => {
     return;
   }
 
-  const session = manager.updateSessionStatus(req.params['id'] as string, newStatus as SessionStatus);
+  const session = await manager.updateSessionStatus(req.params['id'] as string, newStatus as SessionStatus);
 
   if (!session) {
     res.status(404).json({ error: 'Session not found' });

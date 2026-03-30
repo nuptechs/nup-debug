@@ -23,10 +23,18 @@ export interface ServerConfig {
 
 /** Session storage configuration */
 export interface StorageConfig {
-  type: 'file' | 'memory';
+  type: 'file' | 'memory' | 'postgres';
   basePath?: string;
   maxSessions?: number;
   maxStorageMb?: number;
+  /** PostgreSQL connection string (e.g. postgres://user:pass@host:5432/db) */
+  connectionString?: string;
+  host?: string;
+  pgPort?: number;
+  database?: string;
+  user?: string;
+  password?: string;
+  ssl?: boolean;
 }
 
 // ---- Defaults ----

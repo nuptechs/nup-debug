@@ -3,6 +3,22 @@
 # ============================================================
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: debug_probe
+      POSTGRES_USER: probe
+      POSTGRES_PASSWORD: probe_secret
+    volumes:
+      - probe_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U probe -d debug_probe"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   probe-server:
     build:
       context: .
@@ -13,6 +29,10 @@ services:
       - NODE_ENV=production
       - PORT=7070
       - PROBE_AUTH_DISABLED=1
+      - DATABASE_URL=postgres://probe:probe_secret@postgres:5432/debug_probe
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:7070/health"]
       interval: 10s
@@ -34,9 +54,14 @@ services:
       - NODE_ENV=development
       - PORT=7070
       - PROBE_AUTH_DISABLED=1
+      - DATABASE_URL=postgres://probe:probe_secret@postgres:5432/debug_probe
     command: sh -c "npm install && npm run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
     profiles:
       - dev
 
 volumes:
   probe_node_modules:
+  probe_pgdata:

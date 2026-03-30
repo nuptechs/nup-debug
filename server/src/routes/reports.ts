@@ -17,7 +17,7 @@ reportsRouter.get('/:id/report', async (req: Request, res: Response) => {
   const manager = getManager(req);
   const sessionId = req.params['id'] as string;
 
-  const session = manager.getSession(sessionId);
+  const session = await manager.getSession(sessionId);
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
     return;
@@ -34,8 +34,8 @@ reportsRouter.get('/:id/report', async (req: Request, res: Response) => {
   const includeRequestBodies = req.query['includeRequestBodies'] === 'true';
 
   try {
-    const timeline = manager.getTimeline(sessionId);
-    const groups = manager.getCorrelationGroups(sessionId);
+    const timeline = await manager.getTimeline(sessionId);
+    const groups = await manager.getCorrelationGroups(sessionId);
 
     if (!timeline || !groups) {
       res.status(404).json({ error: 'Session not found' });

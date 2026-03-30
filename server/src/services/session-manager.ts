@@ -1,5 +1,7 @@
 // ============================================================
-// SessionManager — In-memory session & event management
+// SessionManager — Persistent session & event management
+// Uses StoragePort for persistence, keeps in-memory correlator
+// for real-time features (WebSocket, timeline, correlation).
 // ============================================================
 
 import type {
@@ -14,10 +16,9 @@ import type {
 } from '@probe/core';
 import { generateSessionId, nowMs, DEFAULT_CORRELATION_CONFIG } from '@probe/core';
 import type { CorrelatorPort } from '@probe/core';
+import type { StoragePort, EventFilter } from '@probe/core';
 
-interface SessionEntry {
-  session: DebugSession;
-  events: ProbeEvent[];
+interface InMemoryEntry {
   correlator: CorrelatorPort;
 }
 
@@ -37,24 +38,27 @@ const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours default
 const PURGE_INTERVAL_MS = 5 * 60 * 1000; // check every 5 minutes
 
 export class SessionManager {
-  private readonly sessions = new Map<string, SessionEntry>();
+  private readonly correlators = new Map<string, InMemoryEntry>();
   private readonly ingestListeners: EventIngestListener[] = [];
   private purgeTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly storage: StoragePort;
 
-  constructor() {
+  constructor(storage: StoragePort) {
+    this.storage = storage;
     this.purgeTimer = setInterval(() => this.purgeStale(), PURGE_INTERVAL_MS);
-    // Allow process to exit even if timer is running
     if (this.purgeTimer.unref) this.purgeTimer.unref();
   }
 
   /** Remove sessions older than TTL that are completed or errored */
-  private purgeStale(): void {
+  private async purgeStale(): Promise<void> {
     const cutoff = nowMs() - SESSION_TTL_MS;
-    for (const [id, entry] of this.sessions) {
-      const status = entry.session.status;
-      const lastActivity = entry.session.endedAt ?? entry.session.startedAt;
+    const sessions = await this.storage.listSessions();
+    for (const session of sessions) {
+      const status = session.status;
+      const lastActivity = session.endedAt ?? session.startedAt;
       if ((status === 'completed' || status === 'error') && lastActivity < cutoff) {
-        this.sessions.delete(id);
+        await this.storage.deleteSession(session.id);
+        this.correlators.delete(session.id);
       }
     }
   }
@@ -67,7 +71,7 @@ export class SessionManager {
     }
   }
 
-  createSession(name: string, config: SessionConfig, tags?: string[]): DebugSession {
+  async createSession(name: string, config: SessionConfig, tags?: string[]): Promise<DebugSession> {
     const id = generateSessionId();
     const session: DebugSession = {
       id,
@@ -79,54 +83,64 @@ export class SessionManager {
       tags,
     };
 
-    // Lazy import to avoid circular issues — correlator created inline
     const correlationConfig: CorrelationConfig =
       config.correlation ?? DEFAULT_CORRELATION_CONFIG;
 
-    // We'll use a lightweight wrapper since we import @probe/correlation-engine lazily
     const correlator = this.createCorrelatorSync(correlationConfig);
+    this.correlators.set(id, { correlator });
 
-    this.sessions.set(id, { session, events: [], correlator });
+    await this.storage.saveSession(session);
     return session;
   }
 
-  listSessions(): DebugSession[] {
-    return Array.from(this.sessions.values()).map((e) => e.session);
+  async listSessions(): Promise<DebugSession[]> {
+    return this.storage.listSessions();
   }
 
-  getSession(id: string): DebugSession | undefined {
-    return this.sessions.get(id)?.session;
+  async getSession(id: string): Promise<DebugSession | null> {
+    return this.storage.loadSession(id);
   }
 
-  deleteSession(id: string): boolean {
-    return this.sessions.delete(id);
+  async deleteSession(id: string): Promise<boolean> {
+    const existing = await this.storage.loadSession(id);
+    if (!existing) return false;
+    await this.storage.deleteSession(id);
+    this.correlators.delete(id);
+    return true;
   }
 
-  updateSessionStatus(id: string, status: SessionStatus): DebugSession | undefined {
-    const entry = this.sessions.get(id);
-    if (!entry) return undefined;
+  async updateSessionStatus(id: string, status: SessionStatus): Promise<DebugSession | null> {
+    const existing = await this.storage.loadSession(id);
+    if (!existing) return null;
 
-    entry.session = {
-      ...entry.session,
-      status,
-      ...(status === 'completed' || status === 'error' ? { endedAt: nowMs() } : {}),
-    };
-    return entry.session;
-  }
-
-  ingestEvents(sessionId: string, events: ProbeEvent[]): number {
-    const entry = this.sessions.get(sessionId);
-    if (!entry) return 0;
-
-    for (const event of events) {
-      entry.events.push(event);
-      entry.correlator.ingest(event);
+    const patch: Partial<DebugSession> = {};
+    if (status === 'completed' || status === 'error') {
+      patch.endedAt = nowMs();
     }
 
-    entry.session = {
-      ...entry.session,
-      eventCount: entry.events.length,
-    };
+    await this.storage.updateSessionStatus(id, status, patch);
+    return this.storage.loadSession(id);
+  }
+
+  async ingestEvents(sessionId: string, events: ProbeEvent[]): Promise<number> {
+    const existing = await this.storage.loadSession(sessionId);
+    if (!existing) return 0;
+
+    // Persist to storage
+    await this.storage.appendEvents(sessionId, events);
+
+    // Feed correlator (in-memory real-time)
+    let entry = this.correlators.get(sessionId);
+    if (!entry) {
+      const config: CorrelationConfig =
+        (existing.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
+      const correlator = this.createCorrelatorSync(config);
+      entry = { correlator };
+      this.correlators.set(sessionId, entry);
+    }
+    for (const event of events) {
+      entry.correlator.ingest(event);
+    }
 
     // Notify listeners (WebSocket)
     for (const listener of this.ingestListeners) {
@@ -136,39 +150,60 @@ export class SessionManager {
     return events.length;
   }
 
-  getEvents(sessionId: string, query: EventQuery): ProbeEvent[] {
-    const entry = this.sessions.get(sessionId);
-    if (!entry) return [];
+  async getEvents(sessionId: string, query: EventQuery): Promise<{ events: ProbeEvent[]; total: number }> {
+    const existing = await this.storage.loadSession(sessionId);
+    if (!existing) return { events: [], total: 0 };
 
-    let filtered = entry.events;
+    const filter: EventFilter = {
+      source: query.source ? [query.source] : undefined,
+      types: query.type ? [query.type] : undefined,
+      fromTime: query.fromTime,
+      toTime: query.toTime,
+      limit: query.limit ?? 500,
+      offset: query.offset ?? 0,
+    };
 
-    if (query.source) {
-      filtered = filtered.filter((e) => e.source === query.source);
-    }
-    if (query.type) {
-      filtered = filtered.filter((e) => (e as unknown as Record<string, unknown>)['type'] === query.type);
-    }
-    if (query.fromTime !== undefined) {
-      filtered = filtered.filter((e) => e.timestamp >= query.fromTime!);
-    }
-    if (query.toTime !== undefined) {
-      filtered = filtered.filter((e) => e.timestamp <= query.toTime!);
-    }
-
-    const offset = query.offset ?? 0;
-    const limit = query.limit ?? 500;
-    return filtered.slice(offset, offset + limit);
+    const events = await this.storage.getEvents(sessionId, filter);
+    const total = await this.storage.getEventCount(sessionId);
+    return { events, total };
   }
 
-  getTimeline(sessionId: string): Timeline | undefined {
-    const entry = this.sessions.get(sessionId);
-    if (!entry) return undefined;
+  async getTimeline(sessionId: string): Promise<Timeline | undefined> {
+    const entry = this.correlators.get(sessionId);
+    if (!entry) {
+      // Rebuild correlator from stored events
+      const session = await this.storage.loadSession(sessionId);
+      if (!session) return undefined;
+
+      const config: CorrelationConfig =
+        (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
+      const correlator = this.createCorrelatorSync(config);
+      const events = await this.storage.getEvents(sessionId);
+      for (const event of events) {
+        correlator.ingest(event);
+      }
+      this.correlators.set(sessionId, { correlator });
+      return correlator.buildTimeline();
+    }
     return entry.correlator.buildTimeline();
   }
 
-  getCorrelationGroups(sessionId: string): CorrelationGroup[] | undefined {
-    const entry = this.sessions.get(sessionId);
-    if (!entry) return undefined;
+  async getCorrelationGroups(sessionId: string): Promise<CorrelationGroup[] | undefined> {
+    const entry = this.correlators.get(sessionId);
+    if (!entry) {
+      const session = await this.storage.loadSession(sessionId);
+      if (!session) return undefined;
+
+      const config: CorrelationConfig =
+        (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
+      const correlator = this.createCorrelatorSync(config);
+      const events = await this.storage.getEvents(sessionId);
+      for (const event of events) {
+        correlator.ingest(event);
+      }
+      this.correlators.set(sessionId, { correlator });
+      return correlator.getGroups();
+    }
     return entry.correlator.getGroups();
   }
 
@@ -181,9 +216,7 @@ export class SessionManager {
   }
 
   /**
-   * Create a minimal correlator that buffers events and delegates to
-   * @probe/correlation-engine when the real module is available.
-   * For MVP, we implement the port inline to avoid async init.
+   * Inline correlator — same logic as before, no changes needed.
    */
   private createCorrelatorSync(_config: CorrelationConfig): CorrelatorPort {
     const events: ProbeEvent[] = [];
