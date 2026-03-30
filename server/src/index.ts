@@ -3,6 +3,9 @@
 // ============================================================
 
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { sessionsRouter } from './routes/sessions.js';
@@ -13,6 +16,7 @@ import { setupWebSocket } from './ws/realtime.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { createRateLimiter } from './middleware/rate-limiter.js';
 
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PORT = parseInt(process.env['PORT'] ?? '7070', 10);
 const HOST = process.env['HOST'] ?? '0.0.0.0';
 
@@ -20,7 +24,12 @@ const app = express();
 
 // Health check (before auth/rate-limit)
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+  res.json({
+    status: 'ok',
+    uptime: process.uptime() * 1000,
+    version: '0.1.0',
+    timestamp: new Date().toISOString(),
+  });
 });
 app.get('/ready', (_req, res) => {
   res.json({ status: 'ready' });
@@ -42,11 +51,23 @@ app.use(createAuthMiddleware({ apiKeys, jwtSecret, enableAuth }));
 // Shared session manager
 const sessionManager = new SessionManager();
 
-// Mount routes — pass session manager via app.locals
+// Mount API routes — pass session manager via app.locals
 app.locals['sessionManager'] = sessionManager;
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/sessions', eventsRouter);
 app.use('/api/sessions', reportsRouter);
+
+// Serve dashboard static files in production
+const dashboardDist = resolve(join(__dirname, '../../dashboard/dist'));
+if (existsSync(dashboardDist)) {
+  app.use(express.static(dashboardDist));
+  // SPA fallback — serve index.html for non-API routes
+  app.get('*', (_req, res, next) => {
+    if (_req.path.startsWith('/api/')) return next();
+    res.sendFile(join(dashboardDist, 'index.html'));
+  });
+  console.log(`[probe-server] Dashboard served from ${dashboardDist}`);
+}
 
 // Create HTTP server & attach WebSocket
 const server = createServer(app);

@@ -1,0 +1,18 @@
+{
+  "name": "@probe/example-express",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/app.ts",
+    "dev": "tsx watch src/app.ts"
+  },
+  "dependencies": {
+    "@probe/sdk": "*",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.0"
+  }
+}

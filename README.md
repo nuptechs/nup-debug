@@ -1,5 +1,10 @@
 # Debug Probe
 
+[![CI](https://github.com/nuptechs/d2/actions/workflows/ci.yml/badge.svg)](https://github.com/nuptechs/d2/actions/workflows/ci.yml)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/typescript-5.7%2B-blue)](https://www.typescriptlang.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
+
 > Universal runtime debug capture, correlation, and analysis for any application stack.
 
 **Debug Probe** instruments your application at every layer — browser, network, server, database — and correlates events into a unified timeline. When a bug happens, you get a complete picture: what the user clicked, what HTTP requests fired, what the server logged, what DB queries ran, and how they all connect.
@@ -47,6 +52,18 @@
 | `@probe/sdk` | Instrumentation for Node.js (Express) & browsers |
 | `@probe/cli` | Command-line interface: capture, watch, report, replay |
 | `@probe/server` | Express + WebSocket API server |
+| **dashboard** | React 19 + TanStack Query + Tailwind CSS web UI |
+
+## Features
+
+- **Multi-layer capture** — Browser, network, logs, database, custom events
+- **Real-time correlation** — 3 strategies (request-id, temporal, url-matching)
+- **Web dashboard** — Live metrics, session management, trace waterfall, log viewer
+- **Enterprise security** — API key + JWT auth, rate limiting, input redaction
+- **SDK instrumentation** — Express middleware, console capture, DB interceptors (Postgres, MySQL, MongoDB, Redis)
+- **Report generation** — HTML, JSON, Markdown export
+- **Docker-ready** — Multi-stage build, health checks, non-root user
+- **CI/CD** — GitHub Actions with Node 20/22 matrix + Docker verification
 
 ## Quick Start
 
@@ -246,6 +263,61 @@ npm test
 
 # Clean all build artifacts
 npm run clean
+```
+
+## Dashboard
+
+The web dashboard provides real-time visibility into debug sessions:
+
+- **Overview** — Live KPI cards, throughput chart, source distribution, event stream
+- **Sessions** — Create/manage debug sessions with status tracking
+- **Session Detail** — Event timeline, source filters, export (JSON/HTML/Markdown)
+- **Traces** — Distributed tracing waterfall visualization
+- **Logs** — Searchable log viewer with level filters
+- **Errors** — Grouped error tracking with stack traces
+- **Settings** — Server connection config, SDK quick start
+
+```bash
+# Development (with hot reload)
+cd dashboard && npm run dev
+# → http://localhost:3000 (proxies API to :7070)
+
+# Production (served by probe-server)
+npm run build
+# Dashboard is served automatically at http://localhost:7070
+```
+
+## Docker
+
+```bash
+# Production build
+docker build -t debug-probe .
+docker run -p 7070:7070 -e PROBE_AUTH_DISABLED=1 debug-probe
+
+# Development with docker-compose
+docker compose --profile dev up
+
+# Production with docker-compose
+docker compose up probe-server
+```
+
+## Demo App
+
+An Express.js Todo API instrumented with Debug Probe:
+
+```bash
+# Start the probe server first
+cd server && npm start
+
+# In another terminal, start the demo
+cd examples/express-app && npm run dev
+
+# Generate some events
+curl http://localhost:3001/api/todos
+curl -X POST http://localhost:3001/api/todos -H 'Content-Type: application/json' -d '{"title":"Buy milk"}'
+curl http://localhost:3001/api/todos
+
+# View events in the dashboard at http://localhost:3000
 ```
 
 ## Tech Stack

@@ -6,7 +6,9 @@
   "description": "Universal Debug Probe — Runtime capture, correlation, and analysis for any application",
   "workspaces": [
     "packages/*",
-    "server"
+    "server",
+    "dashboard",
+    "examples/*"
   ],
   "scripts": {
     "build": "turbo run build",

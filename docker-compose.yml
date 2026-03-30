@@ -1,0 +1,42 @@
+# ============================================================
+# Debug Probe — Local Development Stack
+# ============================================================
+
+services:
+  probe-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7070:7070"
+    environment:
+      - NODE_ENV=production
+      - PORT=7070
+      - PROBE_AUTH_DISABLED=1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7070/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Development mode — mounts source, uses tsx watch
+  probe-dev:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - probe_node_modules:/app/node_modules
+    ports:
+      - "7070:7070"
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=7070
+      - PROBE_AUTH_DISABLED=1
+    command: sh -c "npm install && npm run dev"
+    profiles:
+      - dev
+
+volumes:
+  probe_node_modules:
