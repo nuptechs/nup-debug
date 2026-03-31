@@ -116,7 +116,12 @@ async function main(): Promise<void> {
 
   // Middleware — CORS restricted to configured origins
   const corsOrigins = env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
-  app.use(cors(corsOrigins.length ? { origin: corsOrigins, credentials: true } : undefined));
+  if (corsOrigins.length === 0 && env.NODE_ENV === 'production') {
+    logger.warn('CORS_ORIGINS not set in production — rejecting cross-origin requests');
+    app.use(cors({ origin: false }));
+  } else {
+    app.use(cors(corsOrigins.length ? { origin: corsOrigins, credentials: true } : undefined));
+  }
   app.use(express.json({ type: 'application/json', limit: '10mb', strict: true }));
   app.use(requestLogger);
 
@@ -131,10 +136,15 @@ async function main(): Promise<void> {
     }
   });
 
-  // Authentication (disable via PROBE_AUTH_DISABLED=1 for development)
+  // Authentication (disable via PROBE_AUTH_DISABLED=1 for dev/test ONLY)
   const apiKeys = env.PROBE_API_KEYS.split(',').filter(Boolean);
   const jwtSecret = env.PROBE_JWT_SECRET ?? '';
-  const enableAuth = env.PROBE_AUTH_DISABLED !== '1' && (apiKeys.length > 0 || jwtSecret.length > 0);
+  if (env.PROBE_AUTH_DISABLED === '1' && env.NODE_ENV === 'production') {
+    logger.fatal('PROBE_AUTH_DISABLED=1 is forbidden in production — aborting');
+    process.exit(1);
+  }
+  const authDisabledByEnv = env.PROBE_AUTH_DISABLED === '1' && env.NODE_ENV !== 'production';
+  const enableAuth = !authDisabledByEnv && (apiKeys.length > 0 || jwtSecret.length > 0);
   app.use(createAuthMiddleware({ apiKeys, jwtSecret, enableAuth }));
 
   // Shared session manager — backed by StoragePort
@@ -164,7 +174,7 @@ async function main(): Promise<void> {
 
   // Create HTTP server & attach WebSocket
   const server = createServer(app);
-  setupWebSocket(server, sessionManager);
+  const wss = setupWebSocket(server, sessionManager);
 
   server.listen(env.PORT, env.HOST, () => {
     logger.info({ host: env.HOST, port: env.PORT, auth: enableAuth ? 'enabled' : 'disabled' }, `Listening on http://${env.HOST}:${env.PORT}`);
@@ -180,6 +190,9 @@ async function main(): Promise<void> {
     // Stop accepting new connections
     server.close(async () => {
       try {
+        // Close all WebSocket connections gracefully
+        for (const ws of wss.clients) { ws.close(1001, 'Server shutting down'); }
+        wss.close();
         sessionManager.destroy();
         await storage.close();
         logger.info('Shutdown complete');

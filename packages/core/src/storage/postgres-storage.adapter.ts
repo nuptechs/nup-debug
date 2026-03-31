@@ -168,7 +168,7 @@ export class PostgresStorageAdapter extends StoragePort {
     if (this.config.ssl) {
       poolConfig.ssl = typeof this.config.ssl === 'object'
         ? this.config.ssl
-        : { rejectUnauthorized: false };
+        : { rejectUnauthorized: true };
     }
 
     this.pool = new pg.Pool(poolConfig);

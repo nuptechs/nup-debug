@@ -40,7 +40,7 @@ const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX = 20; // max 20 messages per second
 const MAX_CONNECTIONS_PER_IP = 50;
 
-export function setupWebSocket(server: HttpServer, sessionManager: SessionManager): void {
+export function setupWebSocket(server: HttpServer, sessionManager: SessionManager): WebSocketServer {
   const wss = new WebSocketServer({ server, maxPayload: MAX_MESSAGE_SIZE });
   const subscriptions = new Map<WebSocket, Set<string>>();
   const alive = new Map<WebSocket, boolean>();
@@ -175,4 +175,6 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
     alive.delete(ws);
     messageCounts.delete(ws);
   }
+
+  return wss;
 }

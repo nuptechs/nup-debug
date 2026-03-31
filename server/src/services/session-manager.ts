@@ -189,7 +189,7 @@ export class SessionManager {
       const config: CorrelationConfig =
         (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
       const correlator = this.createCorrelatorSync(config);
-      const events = await this.storage.getEvents(sessionId);
+      const events = await this.storage.getEvents(sessionId, { limit: 50_000 });
       for (const event of events) {
         correlator.ingest(event);
       }
@@ -210,7 +210,7 @@ export class SessionManager {
       const config: CorrelationConfig =
         (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
       const correlator = this.createCorrelatorSync(config);
-      const events = await this.storage.getEvents(sessionId);
+      const events = await this.storage.getEvents(sessionId, { limit: 50_000 });
       for (const event of events) {
         correlator.ingest(event);
       }

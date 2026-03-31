@@ -1,11 +1,18 @@
-hardening round 2: health checks, memory caps, WS limits, rate split, tests
+hardening round 3: path traversal, CORS, SSL, auth guard, timing-safe keys
 
-- /health and /ready now probe storage, return 503 on failure
-- EventCorrelator: cap at 50K events + 5K groups (oldest-evict)
-- WebSocket: max 50 connections per IP with cleanup on disconnect
-- Rate limiter split: read 200req/s vs write 50req/s
-- Export StorageCircuitBreaker + isTransientError for testing
-- NEW: circuit-breaker.test.ts (18 tests: CB states, transient errors)
-- NEW: security-headers.test.ts (5 tests: CSP, HSTS, X-Frame, etc.)
-- NEW: reports.test.ts (6 tests: HTML/JSON/Markdown generation, 404, 400)
-- 188/188 tests passing, 10/10 builds
+CRITICAL:
+- All :id route params validated via sessionIdSchema (regex /^[\w-]+$/)
+  prevents path traversal in FileStorageAdapter
+
+HIGH:
+- CORS: deny all origins in production when CORS_ORIGINS is unset
+- SSL: default to rejectUnauthorized: true (was false - MITM vector)
+- PROBE_AUTH_DISABLED=1 now kills process in production (was silently honored)
+
+MEDIUM:
+- API key comparison now uses timing-safe constant-time check
+- WebSocket connections drained on graceful shutdown (wss returned + closed)
+- Timeline/groups rebuild capped at 50K events (matches correlator cap)
+- Report error handler no longer leaks internal details in any environment
+
+10/10 builds, 188/188 tests

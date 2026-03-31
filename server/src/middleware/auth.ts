@@ -40,6 +40,20 @@ declare global {
 
 const HEALTH_PATHS = new Set(['/health', '/ready']);
 
+/** Timing-safe comparison for API keys — avoids side-channel leakage */
+function timingSafeKeyCheck(keys: string[], candidate: string): boolean {
+  let match = false;
+  for (const key of keys) {
+    if (key.length === candidate.length) {
+      const a = Buffer.from(key, 'utf-8');
+      const b = Buffer.from(candidate, 'utf-8');
+      if (timingSafeEqual(a, b)) match = true;
+      // Don't short-circuit — check all keys for constant time
+    }
+  }
+  return match;
+}
+
 function base64UrlEncode(data: Buffer): string {
   return data.toString('base64url');
 }
@@ -136,8 +150,8 @@ export function verifyJwt(token: string, secret: string): JwtPayload | null {
 // ── Public: middleware factory ────────────────────────────────
 
 export function createAuthMiddleware(config: AuthConfig): RequestHandler {
-  // Pre-compute a Set for O(1) key lookup
-  const validKeys = new Set(config.apiKeys);
+  // Keep array for timing-safe iteration
+  const validKeysList = [...config.apiKeys];
 
   return (req: Request, res: Response, next: NextFunction): void => {
     // Skip auth in dev mode
@@ -159,7 +173,7 @@ export function createAuthMiddleware(config: AuthConfig): RequestHandler {
 
     // 1) Check X-API-Key header first
     if (apiKeyHeader) {
-      if (validKeys.has(apiKeyHeader)) {
+      if (timingSafeKeyCheck(validKeysList, apiKeyHeader)) {
         req.auth = { type: 'api-key', subject: 'sdk-client', permissions: ['*'] };
         next();
         return;
@@ -189,7 +203,7 @@ export function createAuthMiddleware(config: AuthConfig): RequestHandler {
       }
 
       // Treat as API key
-      if (validKeys.has(token)) {
+      if (timingSafeKeyCheck(validKeysList, token)) {
         req.auth = { type: 'api-key', subject: 'sdk-client', permissions: ['*'] };
         next();
         return;

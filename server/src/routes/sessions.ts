@@ -15,6 +15,9 @@ export const sessionsRouter = Router();
 
 // ---- Schemas ----
 
+/** Reusable session ID validator — prevents path traversal */
+export const sessionIdSchema = z.string().min(1).max(128).regex(/^[\w-]+$/, 'Invalid session ID format');
+
 const createSessionSchema = z.object({
   name: z.string().max(256).regex(/^[\w\s\-.:()[\]]+$/, 'Invalid session name characters').optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -72,7 +75,9 @@ sessionsRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
 // GET /api/sessions/:id — Get session details
 sessionsRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const session = await manager.getSession(req.params['id'] as string);
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const session = await manager.getSession(idResult.data);
 
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
@@ -85,7 +90,9 @@ sessionsRouter.get('/:id', asyncHandler(async (req: Request, res: Response) => {
 // DELETE /api/sessions/:id — Delete session
 sessionsRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
   const deleted = await manager.deleteSession(sessionId);
 
   if (!deleted) {
@@ -100,6 +107,10 @@ sessionsRouter.delete('/:id', asyncHandler(async (req: Request, res: Response) =
 // PATCH /api/sessions/:id/status — Update session status
 sessionsRouter.patch('/:id/status', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
+
   const parsed = updateStatusSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
@@ -109,13 +120,13 @@ sessionsRouter.patch('/:id/status', asyncHandler(async (req: Request, res: Respo
     return;
   }
 
-  const session = await manager.updateSessionStatus(req.params['id'] as string, parsed.data.status);
+  const session = await manager.updateSessionStatus(sessionId, parsed.data.status);
 
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
     return;
   }
 
-  logger.info({ audit: 'session.statusChange', sessionId: req.params['id'], newStatus: parsed.data.status, ip: req.ip }, 'Session status updated');
+  logger.info({ audit: 'session.statusChange', sessionId, newStatus: parsed.data.status, ip: req.ip }, 'Session status updated');
   res.json(session);
 }));

@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import type { SessionManager } from '../services/session-manager.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { logger } from '../logger.js';
+import { sessionIdSchema } from './sessions.js';
 
 export const reportsRouter = Router();
 
@@ -17,7 +18,9 @@ function getManager(req: Request): SessionManager {
 // GET /api/sessions/:id/report — Generate report
 reportsRouter.get('/:id/report', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
 
   const session = await manager.getSession(sessionId);
   if (!session) {
@@ -56,9 +59,6 @@ reportsRouter.get('/:id/report', asyncHandler(async (req: Request, res: Response
     res.send(content);
   } catch (error) {
     logger.error({ err: error, sessionId, format }, 'Report generation failed');
-    const msg = process.env['NODE_ENV'] === 'production'
-      ? 'Report generation failed'
-      : error instanceof Error ? error.message : String(error);
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: 'Report generation failed' });
   }
 }));

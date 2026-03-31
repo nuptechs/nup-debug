@@ -8,6 +8,7 @@ import type { ProbeEvent } from '@probe/core';
 import { z } from 'zod';
 import type { SessionManager } from '../services/session-manager.js';
 import { asyncHandler } from '../middleware/async-handler.js';
+import { sessionIdSchema } from './sessions.js';
 
 export const eventsRouter = Router();
 
@@ -44,7 +45,9 @@ function getManager(req: Request): SessionManager {
 // POST /api/sessions/:id/events — Ingest events (batch)
 eventsRouter.post('/:id/events', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
 
   const session = await manager.getSession(sessionId);
   if (!session) {
@@ -75,7 +78,9 @@ eventsRouter.post('/:id/events', asyncHandler(async (req: Request, res: Response
 // GET /api/sessions/:id/events — Query events with filters + pagination
 eventsRouter.get('/:id/events', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
 
   const session = await manager.getSession(sessionId);
   if (!session) {
@@ -97,7 +102,9 @@ eventsRouter.get('/:id/events', asyncHandler(async (req: Request, res: Response)
 // GET /api/sessions/:id/timeline — Get correlated timeline
 eventsRouter.get('/:id/timeline', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
 
   const timeline = await manager.getTimeline(sessionId);
   if (!timeline) {
@@ -111,7 +118,9 @@ eventsRouter.get('/:id/timeline', asyncHandler(async (req: Request, res: Respons
 // GET /api/sessions/:id/groups — Get correlation groups
 eventsRouter.get('/:id/groups', asyncHandler(async (req: Request, res: Response) => {
   const manager = getManager(req);
-  const sessionId = req.params['id'] as string;
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
 
   const groups = await manager.getCorrelationGroups(sessionId);
   if (!groups) {
