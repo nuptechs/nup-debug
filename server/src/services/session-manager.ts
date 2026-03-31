@@ -44,6 +44,7 @@ const MAX_CORRELATORS = 200; // max concurrent in-memory correlators
 export class SessionManager {
   private readonly correlators = new Map<string, InMemoryEntry>();
   private readonly ingestListeners: EventIngestListener[] = [];
+  private readonly rebuildInProgress = new Map<string, Promise<InMemoryEntry | undefined>>();
   private purgeTimer: ReturnType<typeof setInterval> | null = null;
   private readonly storage: StoragePort;
 
@@ -153,9 +154,13 @@ export class SessionManager {
       entry.correlator.ingest(event);
     }
 
-    // Notify listeners (WebSocket)
+    // Notify listeners (WebSocket) — isolate failures per listener
     for (const listener of this.ingestListeners) {
-      listener(sessionId, events);
+      try {
+        listener(sessionId, events);
+      } catch {
+        // Log but don't abort the pipeline — events are already persisted
+      }
     }
 
     return events.length;
@@ -180,46 +185,62 @@ export class SessionManager {
   }
 
   async getTimeline(sessionId: string): Promise<Timeline | undefined> {
-    const entry = this.correlators.get(sessionId);
-    if (!entry) {
-      // Rebuild correlator from stored events
-      const session = await this.storage.loadSession(sessionId);
-      if (!session) return undefined;
-
-      const config: CorrelationConfig =
-        (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
-      const correlator = this.createCorrelatorSync(config);
-      const events = await this.storage.getEvents(sessionId, { limit: 50_000 });
-      for (const event of events) {
-        correlator.ingest(event);
-      }
-      this.correlators.set(sessionId, { correlator, lastAccessed: Date.now() });
-      this.evictStaleCorrelators();
-      return correlator.buildTimeline();
-    }
+    const entry = await this.getOrRebuildCorrelator(sessionId);
+    if (!entry) return undefined;
     entry.lastAccessed = Date.now();
     return entry.correlator.buildTimeline();
   }
 
   async getCorrelationGroups(sessionId: string): Promise<CorrelationGroup[] | undefined> {
-    const entry = this.correlators.get(sessionId);
-    if (!entry) {
-      const session = await this.storage.loadSession(sessionId);
-      if (!session) return undefined;
-
-      const config: CorrelationConfig =
-        (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
-      const correlator = this.createCorrelatorSync(config);
-      const events = await this.storage.getEvents(sessionId, { limit: 50_000 });
-      for (const event of events) {
-        correlator.ingest(event);
-      }
-      this.correlators.set(sessionId, { correlator, lastAccessed: Date.now() });
-      this.evictStaleCorrelators();
-      return correlator.getGroups();
-    }
+    const entry = await this.getOrRebuildCorrelator(sessionId);
+    if (!entry) return undefined;
     entry.lastAccessed = Date.now();
     return entry.correlator.getGroups();
+  }
+
+  /**
+   * Get existing correlator or rebuild from storage.
+   * Coalesces concurrent rebuild requests for the same session and caps total concurrent rebuilds.
+   */
+  private static readonly MAX_CONCURRENT_REBUILDS = 3;
+
+  private async getOrRebuildCorrelator(sessionId: string): Promise<InMemoryEntry | undefined> {
+    const existing = this.correlators.get(sessionId);
+    if (existing) return existing;
+
+    // Coalesce concurrent rebuilds for same session
+    const pending = this.rebuildInProgress.get(sessionId);
+    if (pending) return pending;
+
+    // Cap total concurrent rebuilds to prevent memory spikes
+    if (this.rebuildInProgress.size >= SessionManager.MAX_CONCURRENT_REBUILDS) {
+      return undefined; // Caller should return 503 or empty
+    }
+
+    const rebuild = this.doRebuildCorrelator(sessionId);
+    this.rebuildInProgress.set(sessionId, rebuild);
+    try {
+      return await rebuild;
+    } finally {
+      this.rebuildInProgress.delete(sessionId);
+    }
+  }
+
+  private async doRebuildCorrelator(sessionId: string): Promise<InMemoryEntry | undefined> {
+    const session = await this.storage.loadSession(sessionId);
+    if (!session) return undefined;
+
+    const config: CorrelationConfig =
+      (session.config as SessionConfig)?.correlation ?? DEFAULT_CORRELATION_CONFIG;
+    const correlator = this.createCorrelatorSync(config);
+    const events = await this.storage.getEvents(sessionId, { limit: 50_000 });
+    for (const event of events) {
+      correlator.ingest(event);
+    }
+    const entry: InMemoryEntry = { correlator, lastAccessed: Date.now() };
+    this.correlators.set(sessionId, entry);
+    this.evictStaleCorrelators();
+    return entry;
   }
 
   /** Evict least-recently-used correlators when over the cap */

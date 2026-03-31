@@ -65,8 +65,9 @@ async function main(): Promise<void> {
   app.get('/health', async (_req, res) => {
     let storageOk = true;
     try {
-      // Fast probe — if storage is down, this will throw/timeout
-      await storage.listSessions();
+      // Lightweight probe — load at most 1 session to verify storage is alive
+      // Avoids loading ALL sessions which can saturate I/O under high session counts
+      await storage.listSessionsPaginated({ limit: 1, offset: 0 });
     } catch {
       storageOk = false;
     }
@@ -80,7 +81,7 @@ async function main(): Promise<void> {
   });
   app.get('/ready', async (_req, res) => {
     try {
-      await storage.listSessions();
+      await storage.listSessionsPaginated({ limit: 1, offset: 0 });
       res.json({ status: 'ready' });
     } catch {
       res.status(503).json({ status: 'not ready', reason: 'storage unavailable' });

@@ -137,6 +137,8 @@ function interceptCommand(
   }
 }
 
+const MAX_KEY_LENGTH = 256;
+
 function emitRedisEvent(
   config: RedisInterceptorConfig,
   data: {
@@ -148,12 +150,16 @@ function emitRedisEvent(
 ): void {
   // Map Redis commands to cache-op operation types
   const operation = mapCommandToOperation(data.command);
+  // Truncate oversized keys to prevent event payload bloat
+  const key = data.key.length > MAX_KEY_LENGTH
+    ? data.key.slice(0, MAX_KEY_LENGTH) + '…'
+    : data.key;
 
   config.emitEvent({
     type: 'cache-op' as const,
     correlationId: getCurrentCorrelationId() ?? '',
     operation,
-    key: data.key,
+    key,
     duration: data.duration,
     requestId: getCurrentRequestId(),
     // Additional metadata stored as extra fields

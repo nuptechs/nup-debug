@@ -4,7 +4,7 @@
 // Events:   {basePath}/sessions/{id}/events.jsonl (append-only)
 // ============================================================
 
-import { readFile, writeFile, rename, mkdir, readdir, rm, appendFile } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, readdir, rm, appendFile, realpath } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -13,7 +13,7 @@ import { StoragePort, type EventFilter } from '../ports/storage.port.js';
 import type { DebugSession, ProbeEvent } from '../types/index.js';
 
 export class FileStorageAdapter extends StoragePort {
-  private readonly basePath: string;
+  private basePath: string;
   private readonly writeLocks = new Map<string, Promise<void>>();
 
   constructor(basePath: string = '.probe-data') {
@@ -101,10 +101,12 @@ export class FileStorageAdapter extends StoragePort {
     status: DebugSession['status'],
     patch?: Partial<DebugSession>,
   ): Promise<void> {
-    const session = await this.loadSession(id);
-    if (!session) throw new Error(`Session not found: ${id}`);
-    const updated: DebugSession = { ...session, ...patch, status, id };
-    await this.atomicWrite(this.sessionFile(id), JSON.stringify(updated, null, 2));
+    await this.withWriteLock(id, async () => {
+      const session = await this.loadSession(id);
+      if (!session) throw new Error(`Session not found: ${id}`);
+      const updated: DebugSession = { ...session, ...patch, status, id };
+      await this.atomicWrite(this.sessionFile(id), JSON.stringify(updated, null, 2));
+    });
   }
 
   // ---- Event storage ----
@@ -141,7 +143,13 @@ export class FileStorageAdapter extends StoragePort {
     try {
       for await (const line of rl) {
         if (!line.trim()) continue;
-        const event = JSON.parse(line) as ProbeEvent;
+        let event: ProbeEvent;
+        try {
+          event = JSON.parse(line) as ProbeEvent;
+        } catch {
+          // Skip corrupted JSONL lines instead of aborting the entire read
+          continue;
+        }
         if (!this.matchesFilter(event, filter)) continue;
 
         if (filter?.offset && skipped < filter.offset) {
@@ -174,7 +182,14 @@ export class FileStorageAdapter extends StoragePort {
 
     try {
       for await (const line of rl) {
-        if (line.trim()) count++;
+        if (!line.trim()) continue;
+        // Only count lines that are valid JSON to match getEvents() behavior
+        try {
+          JSON.parse(line);
+          count++;
+        } catch {
+          // Skip corrupted lines
+        }
       }
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return 0;
@@ -188,6 +203,8 @@ export class FileStorageAdapter extends StoragePort {
 
   async initialize(): Promise<void> {
     await mkdir(join(this.basePath, 'sessions'), { recursive: true });
+    // Resolve symlinks to prevent path traversal via STORAGE_PATH
+    this.basePath = await realpath(this.basePath);
   }
 
   async close(): Promise<void> {

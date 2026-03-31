@@ -57,9 +57,16 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       if (ws.readyState !== WebSocket.OPEN) continue;
       if (!subs.has(sessionId)) continue;
 
-      for (const event of events) {
-        const msg: ServerMessage = { type: 'event', sessionId, event };
-        ws.send(JSON.stringify(msg));
+      try {
+        for (const event of events) {
+          const msg: ServerMessage = { type: 'event', sessionId, event };
+          ws.send(JSON.stringify(msg));
+        }
+      } catch (err) {
+        // Isolate per-client failures so remaining subscribers still receive events
+        logger.warn({ err, ip: wsToIp.get(ws) }, 'WebSocket send failed — cleaning up client');
+        ws.terminate();
+        cleanup(ws);
       }
     }
   });

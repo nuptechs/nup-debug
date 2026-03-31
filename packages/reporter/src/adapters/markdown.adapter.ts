@@ -19,6 +19,11 @@ import {
   isBrowserEvent,
 } from '@probe/core';
 
+/** Escape pipe and newline characters for markdown table cells */
+function escPipe(value: unknown): string {
+  return String(value ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+}
+
 export class MarkdownReporter extends ReporterPort {
   async generate(data: ReportData, options?: ReportOptions): Promise<string> {
     const title = options?.title ?? `Debug Report — ${data.session.name}`;
@@ -53,8 +58,8 @@ export class MarkdownReporter extends ReporterPort {
       '',
       `| Field | Value |`,
       `|-------|-------|`,
-      `| **Session** | ${s.name} (${s.id}) |`,
-      `| **Status** | ${s.status} |`,
+      `| **Session** | ${escPipe(s.name)} (${escPipe(s.id)}) |`,
+      `| **Status** | ${escPipe(s.status)} |`,
       `| **Started** | ${toIso(s.startedAt)} |`,
     ];
     if (s.endedAt) {
@@ -63,7 +68,7 @@ export class MarkdownReporter extends ReporterPort {
     }
     lines.push(`| **Events** | ${s.eventCount} |`);
     if (s.tags?.length) {
-      lines.push(`| **Tags** | ${s.tags.join(', ')} |`);
+      lines.push(`| **Tags** | ${escPipe(s.tags.join(', '))} |`);
     }
     return lines.join('\n');
   }
@@ -137,7 +142,7 @@ export class MarkdownReporter extends ReporterPort {
       const status = res ? `${res.statusCode}` : 'pending';
       const duration = res ? formatDuration(res.duration) : '—';
       const url = req.url.length > 80 ? req.url.slice(0, 77) + '...' : req.url;
-      lines.push(`| ${req.method} | \`${url}\` | ${status} | ${duration} |`);
+      lines.push(`| ${escPipe(req.method)} | \`${escPipe(url)}\` | ${escPipe(status)} | ${escPipe(duration)} |`);
     }
 
     if (options?.includeRequestBodies) {
@@ -210,12 +215,12 @@ export class MarkdownReporter extends ReporterPort {
     for (const group of data.correlationGroups) {
       const s = group.summary;
       lines.push(`### Group \`${group.id.slice(0, 8)}\``);
-      lines.push(`- **Trigger**: ${s.trigger ?? 'unknown'}`);
-      if (s.httpMethod) lines.push(`- **HTTP**: ${s.httpMethod} ${s.httpUrl ?? ''} → ${s.httpStatus ?? 'pending'}`);
+      lines.push(`- **Trigger**: ${escPipe(s.trigger ?? 'unknown')}`);
+      if (s.httpMethod) lines.push(`- **HTTP**: ${escPipe(s.httpMethod)} ${escPipe(s.httpUrl ?? '')} → ${escPipe(s.httpStatus ?? 'pending')}`);
       if (s.totalDuration != null) lines.push(`- **Duration**: ${formatDuration(s.totalDuration)}`);
       lines.push(`- **Events**: ${group.events.length} | Logs: ${s.logCount} | DB Queries: ${s.dbQueryCount}`);
-      if (s.hasError) lines.push(`- **Errors**: ${s.errorMessages.join('; ')}`);
-      if (s.entitiesInvolved.length) lines.push(`- **Entities**: ${s.entitiesInvolved.join(', ')}`);
+      if (s.hasError) lines.push(`- **Errors**: ${escPipe(s.errorMessages.join('; '))}`);
+      if (s.entitiesInvolved.length) lines.push(`- **Entities**: ${escPipe(s.entitiesInvolved.join(', '))}`);
       lines.push('');
     }
 

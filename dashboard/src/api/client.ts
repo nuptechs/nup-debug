@@ -78,30 +78,30 @@ export interface SessionsResponse {
 export const api = {
   sessions: {
     list: () => request<SessionsResponse>('/sessions'),
-    get: (id: string) => request<Session>(`/sessions/${id}`),
+    get: (id: string) => request<Session>(`/sessions/${encodeURIComponent(id)}`),
     create: (config?: Record<string, unknown>) =>
       request<Session>('/sessions', { method: 'POST', body: JSON.stringify({ config }) }),
-    delete: (id: string) => request<void>(`/sessions/${id}`, { method: 'DELETE' }),
+    delete: (id: string) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     updateStatus: (id: string, status: string) =>
-      request<Session>(`/sessions/${id}/status`, {
+      request<Session>(`/sessions/${encodeURIComponent(id)}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
   },
   events: {
     list: (sessionId: string, params?: { source?: string; type?: string; limit?: number; offset?: number }) =>
-      request<{ events: ProbeEvent[]; total: number }>(`/sessions/${sessionId}/events`, { params }),
+      request<{ events: ProbeEvent[]; total: number }>(`/sessions/${encodeURIComponent(sessionId)}/events`, { params }),
     ingest: (sessionId: string, events: ProbeEvent[]) =>
-      request<{ received: number }>(`/sessions/${sessionId}/events`, {
+      request<{ received: number }>(`/sessions/${encodeURIComponent(sessionId)}/events`, {
         method: 'POST',
         body: JSON.stringify({ events }),
       }),
     timeline: (sessionId: string) =>
-      request<{ timeline: TimelineEntry[] }>(`/sessions/${sessionId}/timeline`),
+      request<{ timeline: TimelineEntry[] }>(`/sessions/${encodeURIComponent(sessionId)}/timeline`),
   },
   reports: {
     generate: (sessionId: string, format: 'html' | 'json' | 'markdown' = 'json') =>
-      request<unknown>(`/sessions/${sessionId}/report`, { params: { format } }),
+      request<unknown>(`/sessions/${encodeURIComponent(sessionId)}/report`, { params: { format } }),
   },
   health: {
     check: () => request<{ status: string; uptime: number }>('/health'),

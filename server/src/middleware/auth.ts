@@ -136,6 +136,13 @@ export function verifyJwt(token: string, secret: string): JwtPayload | null {
     const now = Math.floor(Date.now() / 1000);
     if (typeof payload.exp !== 'number' || payload.exp <= now) return null;
 
+    // Validate issued-at (clock skew + token age)
+    const MAX_CLOCK_SKEW_SECONDS = 60;
+    const MAX_TOKEN_AGE_SECONDS = 86_400; // 24 hours
+    if (typeof payload.iat !== 'number') return null;
+    if (payload.iat > now + MAX_CLOCK_SKEW_SECONDS) return null; // future iat = suspicious
+    if (now - payload.iat > MAX_TOKEN_AGE_SECONDS) return null;  // token too old
+
     // Validate required fields
     if (typeof payload.sub !== 'string' || !Array.isArray(payload.permissions)) {
       return null;
