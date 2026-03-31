@@ -25,7 +25,7 @@ const MAX_ACTIVE_CONNECTIONS = 5_000;
 const PROXY_REQUEST_TIMEOUT_MS = 30_000;
 
 /** Block requests to private/internal networks — SSRF protection */
-function isPrivateHost(hostname: string): boolean {
+export function isPrivateHost(hostname: string): boolean {
   // IPv4 private ranges + loopback + link-local + metadata
   const blocked = [
     /^127\./,                    // loopback
