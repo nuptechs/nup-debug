@@ -20,6 +20,29 @@ import { createTrafficFilter } from '../filters/traffic-filter.js';
 const DEFAULT_PROXY_PORT = 8080;
 const REQUEST_TTL_MS = 120_000; // 2 minutes
 const CLEANUP_INTERVAL_MS = 30_000;
+const MAX_PENDING_REQUESTS = 10_000;
+const MAX_ACTIVE_CONNECTIONS = 5_000;
+const PROXY_REQUEST_TIMEOUT_MS = 30_000;
+
+/** Block requests to private/internal networks — SSRF protection */
+function isPrivateHost(hostname: string): boolean {
+  // IPv4 private ranges + loopback + link-local + metadata
+  const blocked = [
+    /^127\./,                    // loopback
+    /^10\./,                     // 10.0.0.0/8
+    /^172\.(1[6-9]|2\d|3[01])\./, // 172.16.0.0/12
+    /^192\.168\./,               // 192.168.0.0/16
+    /^169\.254\./,               // link-local / cloud metadata
+    /^0\./,                      // current network
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // carrier-grade NAT
+    /^::1$/,                     // IPv6 loopback
+    /^fd[0-9a-f]{2}:/i,         // IPv6 ULA
+    /^fe80:/i,                   // IPv6 link-local
+  ];
+  const lower = hostname.toLowerCase();
+  if (lower === 'localhost' || lower === '') return true;
+  return blocked.some(re => re.test(lower));
+}
 
 const CAPTURABLE_CONTENT_TYPES = new Set([
   'text/plain', 'text/html', 'text/css', 'text/xml', 'text/csv',
@@ -159,11 +182,25 @@ export class ProxyAdapter extends NetworkCapturePort {
       return;
     }
 
+    // Cap active connections to prevent resource exhaustion
+    if (this.activeConnections.size >= MAX_ACTIVE_CONNECTIONS) {
+      clientRes.writeHead(503, { 'Content-Type': 'text/plain' });
+      clientRes.end('Service Unavailable: too many active connections');
+      return;
+    }
+
     this.activeConnections.add(clientRes);
     clientRes.on('close', () => this.activeConnections.delete(clientRes));
 
     const requestId = generateRequestId();
     const startTime = nowMs();
+
+    // Cap pending requests to prevent unbounded growth
+    if (this.pendingRequests.size >= MAX_PENDING_REQUESTS) {
+      // Evict oldest pending request
+      const oldest = this.pendingRequests.keys().next().value;
+      if (oldest) this.pendingRequests.delete(oldest);
+    }
 
     this.pendingRequests.set(requestId, {
       requestId,
@@ -235,6 +272,14 @@ export class ProxyAdapter extends NetworkCapturePort {
       return;
     }
 
+    // SSRF protection — block private/internal hosts
+    if (isPrivateHost(parsed.hostname)) {
+      clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
+      clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
+      this.pendingRequests.delete(requestId);
+      return;
+    }
+
     const isHttps = parsed.protocol === 'https:';
     const transport = isHttps ? https : http;
 
@@ -245,11 +290,21 @@ export class ProxyAdapter extends NetworkCapturePort {
         path: parsed.pathname + parsed.search,
         method: clientReq.method,
         headers: clientReq.headers,
+        timeout: PROXY_REQUEST_TIMEOUT_MS,
       },
       (proxyRes) => {
         this.handleProxyResponse(proxyRes, clientRes, requestId, startTime);
       },
     );
+
+    proxyReq.on('timeout', () => {
+      proxyReq.destroy();
+      this.pendingRequests.delete(requestId);
+      if (!clientRes.headersSent) {
+        clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
+        clientRes.end('Gateway Timeout');
+      }
+    });
 
     proxyReq.on('error', (err) => {
       this.pendingRequests.delete(requestId);
@@ -336,6 +391,13 @@ export class ProxyAdapter extends NetworkCapturePort {
       return;
     }
 
+    // SSRF protection
+    if (isPrivateHost(parsed.hostname)) {
+      clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
+      clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
+      return;
+    }
+
     const isHttps = parsed.protocol === 'https:';
     const transport = isHttps ? https : http;
 
@@ -346,12 +408,21 @@ export class ProxyAdapter extends NetworkCapturePort {
         path: parsed.pathname + parsed.search,
         method: clientReq.method,
         headers: clientReq.headers,
+        timeout: PROXY_REQUEST_TIMEOUT_MS,
       },
       (proxyRes) => {
         clientRes.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
         proxyRes.pipe(clientRes);
       },
     );
+
+    proxyReq.on('timeout', () => {
+      proxyReq.destroy();
+      if (!clientRes.headersSent) {
+        clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
+        clientRes.end('Gateway Timeout');
+      }
+    });
 
     proxyReq.on('error', () => {
       if (!clientRes.headersSent) {

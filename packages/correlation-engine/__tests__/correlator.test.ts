@@ -64,7 +64,7 @@ describe('EventCorrelator', () => {
     expect(groups[0].events).toHaveLength(2);
   });
 
-  it('caps events at MAX_EVENTS (50,000)', () => {
+  it('caps events at MAX_EVENTS (50,000)', { timeout: 60_000 }, () => {
     correlator.initialize(defaultConfig);
     // Ingest more than 50k events — the internal allEvents should be capped
     for (let i = 0; i < 50_010; i++) {

@@ -9,6 +9,8 @@ import { SdkEventCollector } from './event-collector.js';
 
 type LogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
 
+const MAX_MESSAGE_LENGTH = 8_192;
+
 export interface LogInterceptor {
   readonly collector: SdkEventCollector;
 }
@@ -71,7 +73,8 @@ function emitLogEvent(
       try { return JSON.stringify(arg); }
       catch { return String(arg); }
     })
-    .join(' ');
+    .join(' ')
+    .slice(0, MAX_MESSAGE_LENGTH);
 
   const stack = level === 'error'
     ? args.find((a): a is Error => a instanceof Error)?.stack

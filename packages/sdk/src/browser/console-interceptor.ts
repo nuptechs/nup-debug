@@ -9,6 +9,8 @@ import { redactBody } from '@probe/core';
 type ConsoleLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
 type EventHandler = (event: Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>) => void;
 
+const MAX_MESSAGE_LENGTH = 8_192;
+
 /**
  * Install a console interceptor that emits SDK events for every
  * console.log/warn/error/info/debug call.
@@ -37,15 +39,20 @@ export function installConsoleInterceptor(onEvent: EventHandler): () => void {
       // Build message from args
       const rawMessage = args
         .map((arg) => {
-          if (typeof arg === 'string') return arg;
+          if (typeof arg === 'string') return arg.length > MAX_MESSAGE_LENGTH ? arg.slice(0, MAX_MESSAGE_LENGTH) : arg;
           if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
-          try { return JSON.stringify(arg); }
+          try {
+            const json = JSON.stringify(arg);
+            return json.length > MAX_MESSAGE_LENGTH ? json.slice(0, MAX_MESSAGE_LENGTH) + '...' : json;
+          }
           catch { return String(arg); }
         })
         .join(' ');
 
       // Redact sensitive values (JWTs, credit cards, SSNs, etc.)
-      const message = redactBody(rawMessage);
+      const message = redactBody(rawMessage.length > MAX_MESSAGE_LENGTH
+        ? rawMessage.slice(0, MAX_MESSAGE_LENGTH) + '... [truncated]'
+        : rawMessage);
 
       const stack = args.find((a): a is Error => a instanceof Error)?.stack;
 

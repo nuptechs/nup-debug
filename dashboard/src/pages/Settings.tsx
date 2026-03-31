@@ -11,7 +11,14 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
-    localStorage.setItem('probe-settings', JSON.stringify({ serverUrl, apiKey, refreshInterval }));
+    // Store non-sensitive settings in localStorage
+    localStorage.setItem('probe-settings', JSON.stringify({ serverUrl, refreshInterval }));
+    // API key goes to sessionStorage only (cleared on tab close)
+    if (apiKey) {
+      sessionStorage.setItem('probe-api-key', apiKey);
+    } else {
+      sessionStorage.removeItem('probe-api-key');
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

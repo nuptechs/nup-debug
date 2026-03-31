@@ -18,7 +18,11 @@ export function useWebSocket(path: string = '/ws') {
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const ws = new WebSocket(`${protocol}//${host}${path}`);
+
+    // Include API key as query param for WebSocket auth
+    const apiKey = sessionStorage.getItem('probe-api-key') ?? '';
+    const tokenParam = apiKey ? `?token=${encodeURIComponent(apiKey)}` : '';
+    const ws = new WebSocket(`${protocol}//${host}${path}${tokenParam}`);
 
     ws.onopen = () => {
       setConnected(true);
