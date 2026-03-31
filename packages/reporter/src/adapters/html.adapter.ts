@@ -262,8 +262,10 @@ tr:hover td { background: var(--bg-hover); }
 
     for (const ss of screenshots) {
       const label = ss.label ?? ss.trigger;
+      // Sanitize base64 data — only allow valid base64 characters
+      const safeData = ss.data.replace(/[^A-Za-z0-9+/=]/g, '');
       html += `<div class="screenshot">
-  <img src="data:image/png;base64,${ss.data}" alt="${esc(label)}" loading="lazy" />
+  <img src="data:image/png;base64,${safeData}" alt="${esc(label)}" loading="lazy" />
   <div class="caption">${esc(label)} — ${toIso(ss.timestamp).slice(11, 23)}</div>
 </div>\n`;
     }

@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { SdkEvent } from '@probe/core';
+import { redactBody } from '@probe/core';
 
 type ConsoleLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
 type EventHandler = (event: Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>) => void;
@@ -34,7 +35,7 @@ export function installConsoleInterceptor(onEvent: EventHandler): () => void {
       original.apply(console, args);
 
       // Build message from args
-      const message = args
+      const rawMessage = args
         .map((arg) => {
           if (typeof arg === 'string') return arg;
           if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
@@ -42,6 +43,9 @@ export function installConsoleInterceptor(onEvent: EventHandler): () => void {
           catch { return String(arg); }
         })
         .join(' ');
+
+      // Redact sensitive values (JWTs, credit cards, SSNs, etc.)
+      const message = redactBody(rawMessage);
 
       const stack = args.find((a): a is Error => a instanceof Error)?.stack;
 

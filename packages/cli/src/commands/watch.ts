@@ -41,7 +41,20 @@ async function runWatch(opts: WatchOptions): Promise<void> {
   const chalk = (await import('chalk')).default;
 
   const minLevel = LOG_LEVEL_ORDER[opts.level as LogLevel] ?? LOG_LEVEL_ORDER.info;
-  const patternRegex = opts.pattern ? new RegExp(opts.pattern) : undefined;
+
+  let patternRegex: RegExp | undefined;
+  if (opts.pattern) {
+    if (opts.pattern.length > 500) {
+      console.error(chalk.red('Error: Regex pattern too long (max 500 characters)'));
+      process.exit(1);
+    }
+    try {
+      patternRegex = new RegExp(opts.pattern);
+    } catch (err) {
+      console.error(chalk.red(`Error: Invalid regex pattern: ${(err as Error).message}`));
+      process.exit(1);
+    }
+  }
 
   const configs: LogCollectorConfig[] = [];
 

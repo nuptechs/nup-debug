@@ -13,6 +13,7 @@ interface DedupEntry {
 }
 
 const DEDUP_WINDOW_MS = 1000;
+const MAX_DEDUP_ENTRIES = 500;
 
 /**
  * Install global error boundary that captures:
@@ -29,6 +30,10 @@ export function installErrorBoundary(onEvent: EventHandler): () => void {
     const now = Date.now();
     // Prune old entries
     while (recentErrors.length > 0 && now - (recentErrors[0]?.timestamp ?? 0) > DEDUP_WINDOW_MS) {
+      recentErrors.shift();
+    }
+    // Hard cap to prevent unbounded growth from unique errors
+    while (recentErrors.length >= MAX_DEDUP_ENTRIES) {
       recentErrors.shift();
     }
     // Check for duplicate

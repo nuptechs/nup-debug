@@ -15,8 +15,9 @@ export function loadConfig(configPath?: string): ProbeConfig {
     try {
       const raw = readFileSync(resolvedPath, 'utf-8');
       fileConfig = JSON.parse(raw) as Partial<ProbeConfig>;
-    } catch {
-      // Ignore parse errors on config — use defaults
+    } catch (err) {
+      console.warn(`Warning: Failed to parse ${resolvedPath}: ${(err as Error).message}`);
+      console.warn('Using default configuration.');
     }
   }
 

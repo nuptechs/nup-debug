@@ -159,13 +159,28 @@ function redactParams(
   if (!params || !redactPatterns || redactPatterns.length === 0) return params;
 
   return params.map((param) => {
-    if (typeof param === 'string') {
-      for (const pattern of redactPatterns) {
-        if (isSensitiveKey(pattern)) {
-          // Can't know the key here, just check if value looks like a known pattern
-        }
+    if (typeof param !== 'string') return param;
+    // Check if the string value looks like a sensitive pattern (JWT, CC, SSN, etc.)
+    const sensitiveValuePatterns = [
+      /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi,
+      /eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_.+/=]*/g,
+      /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g,
+      /\b\d{3}-\d{2}-\d{4}\b/g,
+    ];
+    let result: string = param;
+    for (const pattern of sensitiveValuePatterns) {
+      result = result.replace(pattern, '[REDACTED]');
+    }
+    // Also check custom patterns provided by config
+    for (const customPattern of redactPatterns) {
+      if (isSensitiveKey(customPattern) && param.length > 0) {
+        // If the param is *exactly* a value matching a sensitive key pattern, redact it
+        try {
+          const re = new RegExp(customPattern, 'gi');
+          result = result.replace(re, '[REDACTED]');
+        } catch { /* skip invalid regex */ }
       }
     }
-    return param;
+    return result;
   });
 }

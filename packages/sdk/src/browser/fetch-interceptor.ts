@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { SdkEvent } from '@probe/core';
+import { redactHeaders } from '@probe/core';
 
 type EventHandler = (event: Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>) => void;
 
@@ -54,7 +55,7 @@ export function installFetchInterceptor(config: FetchInterceptorConfig): () => v
       requestId,
       method,
       url,
-      headers: headersToRecord(headers),
+      headers: redactHeaders(headersToRecord(headers)),
     } as Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>);
 
     // Build the modified init with injected headers

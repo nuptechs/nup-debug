@@ -10,6 +10,7 @@ type PartialEvent = Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp' | 'source'> 
 type EventHandler = (event: SdkEvent) => void;
 
 export class SdkEventCollector {
+  private static readonly MAX_BUFFER = 10_000;
   private sessionId = '';
   private handlers: EventHandler[] = [];
   private buffer: SdkEvent[] = [];
@@ -35,6 +36,9 @@ export class SdkEventCollector {
     this.stats.byType[typeName] = (this.stats.byType[typeName] ?? 0) + 1;
 
     if (this.handlers.length === 0) {
+      if (this.buffer.length >= SdkEventCollector.MAX_BUFFER) {
+        this.buffer.shift(); // Drop oldest to stay within cap
+      }
       this.buffer.push(event);
       return;
     }

@@ -142,13 +142,14 @@ export class MarkdownReporter extends ReporterPort {
 
     if (options?.includeRequestBodies) {
       lines.push('', '### Request/Response Bodies', '');
+      const escapeCodeFence = (s: string) => s.replace(/`{3,}/g, (m) => '\\`'.repeat(m.length));
       for (const req of requests) {
         if (req.body) {
-          lines.push(`**${req.method} ${req.url}** — Request Body:`, '```json', req.body, '```', '');
+          lines.push(`**${req.method} ${req.url}** — Request Body:`, '```json', escapeCodeFence(req.body), '```', '');
         }
         const res = responses.get(req.requestId);
         if (res?.body) {
-          lines.push(`**${req.method} ${req.url}** — Response Body:`, '```json', res.body, '```', '');
+          lines.push(`**${req.method} ${req.url}** — Response Body:`, '```json', escapeCodeFence(res.body), '```', '');
         }
       }
     }
