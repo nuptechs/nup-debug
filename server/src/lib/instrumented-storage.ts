@@ -3,13 +3,20 @@
 // ============================================================
 
 import { StoragePort } from '@probe/core';
-import type { EventFilter, SessionListOptions } from '@probe/core';
+import type { EventFilter, SessionListOptions, PoolStats } from '@probe/core';
 import type { DebugSession, ProbeEvent } from '@probe/core';
 import {
   storageOperationDuration,
   storageOperationsTotal,
   storageErrors,
+  pgPoolTotalConnections,
+  pgPoolIdleConnections,
+  pgPoolWaitingClients,
+  pgPoolMaxConnections,
+  pgCircuitBreakerState,
 } from '../lib/metrics.js';
+
+const CB_STATE_MAP: Record<string, number> = { closed: 0, 'half-open': 1, open: 2 };
 
 /**
  * Decorator that wraps a StoragePort to record operation latency, counts, and errors.
@@ -18,11 +25,42 @@ import {
 export class InstrumentedStorage extends StoragePort {
   private readonly inner: StoragePort;
   private readonly storageType: string;
+  private poolStatsInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(inner: StoragePort, storageType: string) {
     super();
     this.inner = inner;
     this.storageType = storageType;
+  }
+
+  /** Start periodic pool stats collection (every 10s). Call after initialize(). */
+  startPoolStatsCollection(): void {
+    if (this.poolStatsInterval) return;
+    this.collectPoolStats(); // immediate first sample
+    this.poolStatsInterval = setInterval(() => this.collectPoolStats(), 10_000);
+    this.poolStatsInterval.unref(); // Don't prevent shutdown
+  }
+
+  /** Stop periodic pool stats collection. */
+  stopPoolStatsCollection(): void {
+    if (this.poolStatsInterval) {
+      clearInterval(this.poolStatsInterval);
+      this.poolStatsInterval = null;
+    }
+  }
+
+  private collectPoolStats(): void {
+    const stats = this.inner.getPoolStats();
+    if (!stats) return;
+    pgPoolTotalConnections.set(stats.totalCount);
+    pgPoolIdleConnections.set(stats.idleCount);
+    pgPoolWaitingClients.set(stats.waitingCount);
+    pgPoolMaxConnections.set(stats.maxConnections);
+    pgCircuitBreakerState.set(CB_STATE_MAP[stats.circuitBreakerState] ?? -1);
+  }
+
+  override getPoolStats() {
+    return this.inner.getPoolStats();
   }
 
   private async track<T>(operation: string, fn: () => Promise<T>): Promise<T> {
@@ -92,6 +130,7 @@ export class InstrumentedStorage extends StoragePort {
   }
 
   async close(): Promise<void> {
+    this.stopPoolStatsCollection();
     return this.track('close', () => this.inner.close());
   }
 }

@@ -148,6 +148,38 @@ export const storageErrors = new Counter({
   registers: [registry],
 });
 
+// ---- PostgreSQL Pool ----
+
+export const pgPoolTotalConnections = new Gauge({
+  name: 'probe_pg_pool_total_connections',
+  help: 'Total connections in the PostgreSQL pool (active + idle)',
+  registers: [registry],
+});
+
+export const pgPoolIdleConnections = new Gauge({
+  name: 'probe_pg_pool_idle_connections',
+  help: 'Idle connections in the PostgreSQL pool',
+  registers: [registry],
+});
+
+export const pgPoolWaitingClients = new Gauge({
+  name: 'probe_pg_pool_waiting_clients',
+  help: 'Clients waiting for a connection from the pool',
+  registers: [registry],
+});
+
+export const pgPoolMaxConnections = new Gauge({
+  name: 'probe_pg_pool_max_connections',
+  help: 'Maximum connections configured for the pool',
+  registers: [registry],
+});
+
+export const pgCircuitBreakerState = new Gauge({
+  name: 'probe_pg_circuit_breaker_state',
+  help: 'Circuit breaker state: 0=closed (healthy), 1=half-open (testing), 2=open (failing)',
+  registers: [registry],
+});
+
 // ---- WebSocket ----
 
 export const wsConnectionsActive = new Gauge({
@@ -232,6 +264,11 @@ export function resetMetrics(): void {
   storageOperationDuration.reset();
   storageOperationsTotal.reset();
   storageErrors.reset();
+  pgPoolTotalConnections.reset();
+  pgPoolIdleConnections.reset();
+  pgPoolWaitingClients.reset();
+  pgPoolMaxConnections.reset();
+  pgCircuitBreakerState.reset();
   wsConnectionsActive.reset();
   wsConnectionsTotal.reset();
   wsConnectionsRejected.reset();

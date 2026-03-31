@@ -74,4 +74,17 @@ export abstract class StoragePort {
   // ---- Lifecycle ----
   abstract initialize(): Promise<void>;
   abstract close(): Promise<void>;
+
+  // ---- Diagnostics (optional — only Postgres adapter provides real data) ----
+
+  /** Pool connection stats. Returns null for non-pooled adapters (memory, file). */
+  getPoolStats(): PoolStats | null { return null; }
+}
+
+export interface PoolStats {
+  totalCount: number;
+  idleCount: number;
+  waitingCount: number;
+  maxConnections: number;
+  circuitBreakerState: string;
 }

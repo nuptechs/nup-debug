@@ -545,4 +545,62 @@ describe('PostgresStorageAdapter', () => {
       expect(countCall[0]).toContain('correlation_id');
     });
   });
+
+  describe('getPoolStats', () => {
+    it('returns null when pool is not initialized', () => {
+      const raw = new PostgresStorageAdapter({ connectionString: 'x' });
+      expect(raw.getPoolStats()).toBeNull();
+    });
+
+    it('returns pool stats when initialized', () => {
+      // Inject mock pool with pg pool properties
+      const mockPoolWithStats = {
+        ...pool,
+        totalCount: 5,
+        idleCount: 3,
+        waitingCount: 1,
+      };
+      const a = createInitializedAdapter(mockPoolWithStats as any);
+      const stats = a.getPoolStats();
+      expect(stats).not.toBeNull();
+      expect(stats!.totalCount).toBe(5);
+      expect(stats!.idleCount).toBe(3);
+      expect(stats!.waitingCount).toBe(1);
+      expect(stats!.maxConnections).toBe(20);
+      expect(stats!.circuitBreakerState).toBe('closed');
+    });
+  });
+
+  describe('slow query logging', () => {
+    it('calls logger.warn for queries exceeding threshold', async () => {
+      const warnSpy = vi.fn();
+      const slowAdapter = new PostgresStorageAdapter({
+        connectionString: 'postgres://test',
+        slowQueryThresholdMs: 0, // Trigger on all queries
+        logger: { warn: warnSpy, error: vi.fn() },
+      });
+      (slowAdapter as any).pool = pool;
+
+      await slowAdapter.loadSession('sess-1');
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Slow query detected',
+        expect.objectContaining({ durationMs: expect.any(Number), sql: expect.stringContaining('SELECT') }),
+      );
+    });
+
+    it('does not log warn for fast queries under threshold', async () => {
+      const warnSpy = vi.fn();
+      const fastAdapter = new PostgresStorageAdapter({
+        connectionString: 'postgres://test',
+        slowQueryThresholdMs: 60_000, // Very high threshold
+        logger: { warn: warnSpy, error: vi.fn() },
+      });
+      (fastAdapter as any).pool = pool;
+
+      await fastAdapter.loadSession('sess-1');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
 });

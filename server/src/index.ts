@@ -67,6 +67,9 @@ async function main(): Promise<void> {
   const rawStorage = createStorage(storageConfig);
   const storage = instrumentStorage(rawStorage, storageConfig.type);
   await storage.initialize();
+  if (storageConfig.type === 'postgres') {
+    storage.startPoolStatsCollection();
+  }
   logger.info({ storage: storageConfig.type }, 'Storage initialized');
 
   const app = express();
@@ -93,6 +96,7 @@ async function main(): Promise<void> {
       version: '0.1.0',
       timestamp: new Date().toISOString(),
       storageOk,
+      ...(storage.getPoolStats() ? { pool: storage.getPoolStats() } : {}),
       metrics: {
         activeSessions: (await sessionsActive.get()).values[0]?.value ?? 0,
         activeWsConnections: (await wsConnectionsActive.get()).values[0]?.value ?? 0,

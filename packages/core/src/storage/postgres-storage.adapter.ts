@@ -5,6 +5,7 @@
 
 import type { DebugSession, ProbeEvent } from '../types/index.js';
 import { StoragePort, type EventFilter } from '../ports/storage.port.js';
+import type { PoolStats } from '../ports/storage.port.js';
 
 // pg types — dynamically imported to keep it optional
 type Pool = import('pg').Pool;
@@ -111,11 +112,17 @@ export interface PostgresStorageConfig {
   password?: string;
   maxConnections?: number;
   ssl?: boolean | object;
+  /** Log warning when a single query exceeds this threshold (ms). Default: 500ms */
+  slowQueryThresholdMs?: number;
+  /** Optional logger — defaults to console.warn for slow queries and console.error for pool errors */
+  logger?: { warn: (msg: string, meta?: Record<string, unknown>) => void; error: (msg: string, meta?: Record<string, unknown>) => void };
 }
 
 export class PostgresStorageAdapter extends StoragePort {
   private pool: Pool | null = null;
   private readonly config: PostgresStorageConfig;
+  private readonly slowQueryThresholdMs: number;
+  private readonly log: NonNullable<PostgresStorageConfig['logger']>;
   private readonly circuitBreaker = new StorageCircuitBreaker({
     failureThreshold: 5,
     resetTimeoutMs: 30_000,
@@ -125,6 +132,11 @@ export class PostgresStorageAdapter extends StoragePort {
   constructor(config: PostgresStorageConfig) {
     super();
     this.config = config;
+    this.slowQueryThresholdMs = config.slowQueryThresholdMs ?? 500;
+    this.log = config.logger ?? {
+      warn: (msg, meta) => console.warn(`[pg-storage] ${msg}`, meta ?? ''),
+      error: (msg, meta) => console.error(`[pg-storage] ${msg}`, meta ?? ''),
+    };
   }
 
   /** Retry transient failures with exponential backoff + circuit breaker */
@@ -173,6 +185,11 @@ export class PostgresStorageAdapter extends StoragePort {
 
     this.pool = new pg.Pool(poolConfig);
 
+    // Handle pool-level errors (idle clients that encounter errors)
+    this.pool.on('error', (err: Error) => {
+      this.log.error('Pool idle client error', { message: err.message, code: (err as Error & { code?: string }).code });
+    });
+
     // Verify connection
     const client = await this.pool.connect();
     try {
@@ -180,6 +197,18 @@ export class PostgresStorageAdapter extends StoragePort {
     } finally {
       client.release();
     }
+
+    // Warm up the pool — preload min(4, maxConnections) connections
+    const warmupCount = Math.min(4, poolConfig.max ?? 20);
+    const warmupClients: Array<{ release: () => void }> = [];
+    for (let i = 1; i < warmupCount; i++) {
+      try {
+        warmupClients.push(await this.pool.connect());
+      } catch {
+        break;  // Pool may be smaller than requested
+      }
+    }
+    for (const c of warmupClients) c.release();
 
     await this.runMigrations();
   }
@@ -191,13 +220,48 @@ export class PostgresStorageAdapter extends StoragePort {
     }
   }
 
+  // ---- Pool Diagnostics ----
+
+  override getPoolStats(): PoolStats | null {
+    if (!this.pool) return null;
+    const p = this.pool as Pool & { totalCount: number; idleCount: number; waitingCount: number };
+    return {
+      totalCount: p.totalCount ?? 0,
+      idleCount: p.idleCount ?? 0,
+      waitingCount: p.waitingCount ?? 0,
+      maxConnections: this.config.maxConnections ?? 20,
+      circuitBreakerState: this.circuitBreaker.getState(),
+    };
+  }
+
+  /** Execute a query through the pool with slow query detection */
+  private async trackedQuery(pool: Pool, sql: string, params?: unknown[]): Promise<{ rows: any[]; rowCount: number | null }> {
+    const start = performance.now();
+    try {
+      return await pool.query(sql, params);
+    } finally {
+      const durationMs = performance.now() - start;
+      if (durationMs >= this.slowQueryThresholdMs) {
+        // Truncate SQL for log readability; never log raw params (may contain sensitive data)
+        const truncatedSql = sql.length > 200 ? sql.slice(0, 200) + '...' : sql;
+        this.log.warn('Slow query detected', { durationMs: Math.round(durationMs), sql: truncatedSql });
+      }
+    }
+  }
+
   // ---- Schema Migrations ----
 
   private async runMigrations(): Promise<void> {
     const pool = this.getPool();
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS probe_migrations (
+    // Acquire advisory lock to prevent concurrent migration runs across replicas
+    // Lock ID 7364823 is arbitrary but unique to probe_migrations
+    const lockClient = await pool.connect();
+    try {
+      await lockClient.query('SELECT pg_advisory_lock(7364823)');
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS probe_migrations (
         id SERIAL PRIMARY KEY,
         version INTEGER NOT NULL UNIQUE,
         name TEXT NOT NULL,
@@ -229,6 +293,12 @@ export class PostgresStorageAdapter extends StoragePort {
         }
       }
     }
+
+    } finally {
+      // Release advisory lock regardless of success/failure
+      await lockClient.query('SELECT pg_advisory_unlock(7364823)');
+      lockClient.release();
+    }
   }
 
   // ---- Session CRUD ----
@@ -236,7 +306,7 @@ export class PostgresStorageAdapter extends StoragePort {
   async saveSession(session: DebugSession): Promise<void> {
     const pool = this.getPool();
     await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         `INSERT INTO probe_sessions (id, name, status, config, started_at, ended_at, event_count, error_message, tags, metadata)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (id) DO UPDATE SET
@@ -268,7 +338,7 @@ export class PostgresStorageAdapter extends StoragePort {
   async loadSession(id: string): Promise<DebugSession | null> {
     const pool = this.getPool();
     const { rows } = await this.withRetry(() =>
-      pool.query('SELECT * FROM probe_sessions WHERE id = $1', [id]),
+      this.trackedQuery(pool, 'SELECT * FROM probe_sessions WHERE id = $1', [id]),
     );
     if (rows.length === 0) return null;
     return this.rowToSession(rows[0]);
@@ -277,7 +347,7 @@ export class PostgresStorageAdapter extends StoragePort {
   async listSessions(): Promise<DebugSession[]> {
     const pool = this.getPool();
     const { rows } = await this.withRetry(() =>
-      pool.query('SELECT * FROM probe_sessions ORDER BY started_at DESC'),
+      this.trackedQuery(pool, 'SELECT * FROM probe_sessions ORDER BY started_at DESC'),
     );
     return rows.map((r: Record<string, unknown>) => this.rowToSession(r));
   }
@@ -285,7 +355,7 @@ export class PostgresStorageAdapter extends StoragePort {
   async deleteSession(id: string): Promise<void> {
     const pool = this.getPool();
     await this.withRetry(() =>
-      pool.query('DELETE FROM probe_sessions WHERE id = $1', [id]),
+      this.trackedQuery(pool, 'DELETE FROM probe_sessions WHERE id = $1', [id]),
     );
   }
 
@@ -301,7 +371,7 @@ export class PostgresStorageAdapter extends StoragePort {
 
     if (patch) {
       await this.withRetry(() =>
-        pool.query(
+        this.trackedQuery(pool,
           `UPDATE probe_sessions SET
              status = $2,
              ended_at = COALESCE($3, ended_at),
@@ -325,7 +395,7 @@ export class PostgresStorageAdapter extends StoragePort {
       );
     } else {
       await this.withRetry(() =>
-        pool.query(
+        this.trackedQuery(pool,
           'UPDATE probe_sessions SET status = $2, ended_at = COALESCE($3, ended_at) WHERE id = $1',
           [id, status, endedAt],
         ),
@@ -363,7 +433,7 @@ export class PostgresStorageAdapter extends StoragePort {
     }
 
     await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         `INSERT INTO probe_events (id, session_id, timestamp, source, type, correlation_id, payload)
          SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::jsonb[])
          ON CONFLICT (id) DO NOTHING`,
@@ -373,7 +443,7 @@ export class PostgresStorageAdapter extends StoragePort {
 
     // Update event count on session
     await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         `UPDATE probe_sessions SET event_count = (
           SELECT COUNT(*) FROM probe_events WHERE session_id = $1
          ) WHERE id = $1`,
@@ -425,14 +495,14 @@ export class PostgresStorageAdapter extends StoragePort {
     `;
     params.push(limit, offset);
 
-    const { rows } = await this.withRetry(() => pool.query(sql, params));
+    const { rows } = await this.withRetry(() => this.trackedQuery(pool, sql, params));
     return rows.map((r: Record<string, unknown>) => r.payload as unknown as ProbeEvent);
   }
 
   async getEventCount(sessionId: string): Promise<number> {
     const pool = this.getPool();
     const { rows } = await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         'SELECT COUNT(*)::int AS count FROM probe_events WHERE session_id = $1',
         [sessionId],
       ),
@@ -479,14 +549,14 @@ export class PostgresStorageAdapter extends StoragePort {
     const orderDir = opts.order === 'asc' ? 'ASC' : 'DESC';
 
     const countResult = await this.withRetry(() =>
-      pool.query(`SELECT COUNT(*)::int AS total FROM probe_sessions ${where}`, params),
+      this.trackedQuery(pool, `SELECT COUNT(*)::int AS total FROM probe_sessions ${where}`, params),
     );
 
     const limit = Math.min(opts.limit ?? 50, 200);
     const offset = opts.offset ?? 0;
 
     const dataResult = await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         `SELECT * FROM probe_sessions ${where} ORDER BY ${orderCol} ${orderDir} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         [...params, limit, offset],
       ),
@@ -533,14 +603,14 @@ export class PostgresStorageAdapter extends StoragePort {
     const where = conditions.join(' AND ');
 
     const countResult = await this.withRetry(() =>
-      pool.query(`SELECT COUNT(*)::int AS total FROM probe_events WHERE ${where}`, params),
+      this.trackedQuery(pool, `SELECT COUNT(*)::int AS total FROM probe_events WHERE ${where}`, params),
     );
 
     const limit = filter?.limit ?? 500;
     const offset = filter?.offset ?? 0;
 
     const dataResult = await this.withRetry(() =>
-      pool.query(
+      this.trackedQuery(pool,
         `SELECT payload FROM probe_events WHERE ${where} ORDER BY timestamp ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         [...params, limit, offset],
       ),
