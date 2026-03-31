@@ -10,6 +10,96 @@ import { StoragePort, type EventFilter } from '../ports/storage.port.js';
 type Pool = import('pg').Pool;
 type PoolConfig = import('pg').PoolConfig;
 
+// ---- Circuit Breaker (inlined to avoid cross-package dep on @probe/sdk) ----
+
+interface CBConfig {
+  failureThreshold: number;
+  resetTimeoutMs: number;
+  halfOpenMaxAttempts: number;
+}
+
+class StorageCircuitBreaker {
+  private state: 'closed' | 'open' | 'half-open' = 'closed';
+  private failures = 0;
+  private lastFailureTime = 0;
+  private halfOpenAttempts = 0;
+  private readonly config: CBConfig;
+
+  constructor(config: Partial<CBConfig> = {}) {
+    this.config = {
+      failureThreshold: config.failureThreshold ?? 5,
+      resetTimeoutMs: config.resetTimeoutMs ?? 30_000,
+      halfOpenMaxAttempts: config.halfOpenMaxAttempts ?? 2,
+    };
+  }
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      if (Date.now() - this.lastFailureTime >= this.config.resetTimeoutMs) {
+        this.state = 'half-open';
+        this.halfOpenAttempts = 0;
+      } else {
+        throw new Error('Circuit breaker is open — storage unavailable');
+      }
+    }
+    if (this.state === 'half-open') {
+      if (this.halfOpenAttempts >= this.config.halfOpenMaxAttempts) {
+        throw new Error('Circuit breaker is half-open — max probe attempts reached');
+      }
+      this.halfOpenAttempts++;
+    }
+    try {
+      const result = await fn();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  getState(): string { return this.state; }
+
+  private onSuccess(): void {
+    if (this.state === 'half-open') {
+      this.state = 'closed';
+      this.failures = 0;
+      this.halfOpenAttempts = 0;
+    } else {
+      this.failures = 0;
+    }
+  }
+
+  private onFailure(): void {
+    this.failures++;
+    this.lastFailureTime = Date.now();
+    if (this.state === 'half-open') {
+      this.state = 'open';
+      this.halfOpenAttempts = 0;
+    } else if (this.failures >= this.config.failureThreshold) {
+      this.state = 'open';
+    }
+  }
+}
+
+// ---- Transient error detection ----
+
+function isTransientError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as Error & { code?: string };
+  return (
+    err.code === 'ECONNREFUSED' ||
+    err.code === 'ECONNRESET' ||
+    err.code === 'ETIMEDOUT' ||
+    err.code === '40001' ||  // serialization_failure
+    err.code === '40P01' ||  // deadlock_detected
+    err.code === '57P01' ||  // admin_shutdown
+    err.code === '57P03' ||  // cannot_connect_now (recovery)
+    err.message.includes('Connection terminated') ||
+    err.message.includes('server closed the connection')
+  );
+}
+
 export interface PostgresStorageConfig {
   connectionString?: string;
   host?: string;
@@ -24,10 +114,31 @@ export interface PostgresStorageConfig {
 export class PostgresStorageAdapter extends StoragePort {
   private pool: Pool | null = null;
   private readonly config: PostgresStorageConfig;
+  private readonly circuitBreaker = new StorageCircuitBreaker({
+    failureThreshold: 5,
+    resetTimeoutMs: 30_000,
+    halfOpenMaxAttempts: 2,
+  });
 
   constructor(config: PostgresStorageConfig) {
     super();
     this.config = config;
+  }
+
+  /** Retry transient failures with exponential backoff + circuit breaker */
+  private async withRetry<T>(operation: () => Promise<T>, maxAttempts = 3): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.circuitBreaker.execute(operation);
+      } catch (error) {
+        lastError = error;
+        if (!isTransientError(error) || attempt === maxAttempts) throw error;
+        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10_000);
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+    throw lastError;
   }
 
   async initialize(): Promise<void> {
@@ -122,39 +233,40 @@ export class PostgresStorageAdapter extends StoragePort {
 
   async saveSession(session: DebugSession): Promise<void> {
     const pool = this.getPool();
-    await pool.query(
-      `INSERT INTO probe_sessions (id, name, status, config, started_at, ended_at, event_count, error_message, tags, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       ON CONFLICT (id) DO UPDATE SET
-         name = EXCLUDED.name,
-         status = EXCLUDED.status,
-         config = EXCLUDED.config,
-         started_at = EXCLUDED.started_at,
-         ended_at = EXCLUDED.ended_at,
-         event_count = EXCLUDED.event_count,
-         error_message = EXCLUDED.error_message,
-         tags = EXCLUDED.tags,
-         metadata = EXCLUDED.metadata`,
-      [
-        session.id,
-        session.name,
-        session.status,
-        JSON.stringify(session.config),
-        session.startedAt,
-        session.endedAt ?? null,
-        session.eventCount,
-        session.errorMessage ?? null,
-        session.tags ?? null,
-        session.metadata ? JSON.stringify(session.metadata) : null,
-      ],
+    await this.withRetry(() =>
+      pool.query(
+        `INSERT INTO probe_sessions (id, name, status, config, started_at, ended_at, event_count, error_message, tags, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name,
+           status = EXCLUDED.status,
+           config = EXCLUDED.config,
+           started_at = EXCLUDED.started_at,
+           ended_at = EXCLUDED.ended_at,
+           event_count = EXCLUDED.event_count,
+           error_message = EXCLUDED.error_message,
+           tags = EXCLUDED.tags,
+           metadata = EXCLUDED.metadata`,
+        [
+          session.id,
+          session.name,
+          session.status,
+          JSON.stringify(session.config),
+          session.startedAt,
+          session.endedAt ?? null,
+          session.eventCount,
+          session.errorMessage ?? null,
+          session.tags ?? null,
+          session.metadata ? JSON.stringify(session.metadata) : null,
+        ],
+      ),
     );
   }
 
   async loadSession(id: string): Promise<DebugSession | null> {
     const pool = this.getPool();
-    const { rows } = await pool.query(
-      'SELECT * FROM probe_sessions WHERE id = $1',
-      [id],
+    const { rows } = await this.withRetry(() =>
+      pool.query('SELECT * FROM probe_sessions WHERE id = $1', [id]),
     );
     if (rows.length === 0) return null;
     return this.rowToSession(rows[0]);
@@ -162,16 +274,17 @@ export class PostgresStorageAdapter extends StoragePort {
 
   async listSessions(): Promise<DebugSession[]> {
     const pool = this.getPool();
-    const { rows } = await pool.query(
-      'SELECT * FROM probe_sessions ORDER BY started_at DESC',
+    const { rows } = await this.withRetry(() =>
+      pool.query('SELECT * FROM probe_sessions ORDER BY started_at DESC'),
     );
     return rows.map((r: Record<string, unknown>) => this.rowToSession(r));
   }
 
   async deleteSession(id: string): Promise<void> {
     const pool = this.getPool();
-    // Events are cascaded via FK
-    await pool.query('DELETE FROM probe_sessions WHERE id = $1', [id]);
+    await this.withRetry(() =>
+      pool.query('DELETE FROM probe_sessions WHERE id = $1', [id]),
+    );
   }
 
   async updateSessionStatus(
@@ -185,31 +298,35 @@ export class PostgresStorageAdapter extends StoragePort {
       : null;
 
     if (patch) {
-      await pool.query(
-        `UPDATE probe_sessions SET
-           status = $2,
-           ended_at = COALESCE($3, ended_at),
-           name = COALESCE($4, name),
-           error_message = COALESCE($5, error_message),
-           event_count = COALESCE($6, event_count),
-           tags = COALESCE($7, tags),
-           metadata = COALESCE($8, metadata)
-         WHERE id = $1`,
-        [
-          id,
-          status,
-          endedAt,
-          patch.name ?? null,
-          patch.errorMessage ?? null,
-          patch.eventCount ?? null,
-          patch.tags ?? null,
-          patch.metadata ? JSON.stringify(patch.metadata) : null,
-        ],
+      await this.withRetry(() =>
+        pool.query(
+          `UPDATE probe_sessions SET
+             status = $2,
+             ended_at = COALESCE($3, ended_at),
+             name = COALESCE($4, name),
+             error_message = COALESCE($5, error_message),
+             event_count = COALESCE($6, event_count),
+             tags = COALESCE($7, tags),
+             metadata = COALESCE($8, metadata)
+           WHERE id = $1`,
+          [
+            id,
+            status,
+            endedAt,
+            patch.name ?? null,
+            patch.errorMessage ?? null,
+            patch.eventCount ?? null,
+            patch.tags ?? null,
+            patch.metadata ? JSON.stringify(patch.metadata) : null,
+          ],
+        ),
       );
     } else {
-      await pool.query(
-        'UPDATE probe_sessions SET status = $2, ended_at = COALESCE($3, ended_at) WHERE id = $1',
-        [id, status, endedAt],
+      await this.withRetry(() =>
+        pool.query(
+          'UPDATE probe_sessions SET status = $2, ended_at = COALESCE($3, ended_at) WHERE id = $1',
+          [id, status, endedAt],
+        ),
       );
     }
   }
@@ -238,24 +355,28 @@ export class PostgresStorageAdapter extends StoragePort {
       sessionIds.push(sessionId);
       timestamps.push(event.timestamp);
       sources.push(event.source);
-      types.push((event as unknown as Record<string, unknown>)['type'] as string ?? 'unknown');
+      types.push(event.type ?? 'unknown');
       correlationIds.push(event.correlationId ?? null);
       payloads.push(JSON.stringify(event));
     }
 
-    await pool.query(
-      `INSERT INTO probe_events (id, session_id, timestamp, source, type, correlation_id, payload)
-       SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::jsonb[])
-       ON CONFLICT (id) DO NOTHING`,
-      [ids, sessionIds, timestamps, sources, types, correlationIds, payloads],
+    await this.withRetry(() =>
+      pool.query(
+        `INSERT INTO probe_events (id, session_id, timestamp, source, type, correlation_id, payload)
+         SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::jsonb[])
+         ON CONFLICT (id) DO NOTHING`,
+        [ids, sessionIds, timestamps, sources, types, correlationIds, payloads],
+      ),
     );
 
     // Update event count on session
-    await pool.query(
-      `UPDATE probe_sessions SET event_count = (
-        SELECT COUNT(*) FROM probe_events WHERE session_id = $1
-       ) WHERE id = $1`,
-      [sessionId],
+    await this.withRetry(() =>
+      pool.query(
+        `UPDATE probe_sessions SET event_count = (
+          SELECT COUNT(*) FROM probe_events WHERE session_id = $1
+         ) WHERE id = $1`,
+        [sessionId],
+      ),
     );
   }
 
@@ -302,15 +423,17 @@ export class PostgresStorageAdapter extends StoragePort {
     `;
     params.push(limit, offset);
 
-    const { rows } = await pool.query(sql, params);
+    const { rows } = await this.withRetry(() => pool.query(sql, params));
     return rows.map((r: Record<string, unknown>) => r.payload as unknown as ProbeEvent);
   }
 
   async getEventCount(sessionId: string): Promise<number> {
     const pool = this.getPool();
-    const { rows } = await pool.query(
-      'SELECT COUNT(*)::int AS count FROM probe_events WHERE session_id = $1',
-      [sessionId],
+    const { rows } = await this.withRetry(() =>
+      pool.query(
+        'SELECT COUNT(*)::int AS count FROM probe_events WHERE session_id = $1',
+        [sessionId],
+      ),
     );
     return rows[0]?.count ?? 0;
   }
@@ -351,17 +474,18 @@ export class PostgresStorageAdapter extends StoragePort {
     const orderCol = allowedOrderColumns[opts.orderBy ?? 'started_at'] ?? 'started_at';
     const orderDir = opts.order === 'asc' ? 'ASC' : 'DESC';
 
-    const countResult = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM probe_sessions ${where}`,
-      params,
+    const countResult = await this.withRetry(() =>
+      pool.query(`SELECT COUNT(*)::int AS total FROM probe_sessions ${where}`, params),
     );
 
     const limit = Math.min(opts.limit ?? 50, 200);
     const offset = opts.offset ?? 0;
 
-    const dataResult = await pool.query(
-      `SELECT * FROM probe_sessions ${where} ORDER BY ${orderCol} ${orderDir} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-      [...params, limit, offset],
+    const dataResult = await this.withRetry(() =>
+      pool.query(
+        `SELECT * FROM probe_sessions ${where} ORDER BY ${orderCol} ${orderDir} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        [...params, limit, offset],
+      ),
     );
 
     return {
@@ -404,17 +528,18 @@ export class PostgresStorageAdapter extends StoragePort {
 
     const where = conditions.join(' AND ');
 
-    const countResult = await pool.query(
-      `SELECT COUNT(*)::int AS total FROM probe_events WHERE ${where}`,
-      params,
+    const countResult = await this.withRetry(() =>
+      pool.query(`SELECT COUNT(*)::int AS total FROM probe_events WHERE ${where}`, params),
     );
 
     const limit = filter?.limit ?? 500;
     const offset = filter?.offset ?? 0;
 
-    const dataResult = await pool.query(
-      `SELECT payload FROM probe_events WHERE ${where} ORDER BY timestamp ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-      [...params, limit, offset],
+    const dataResult = await this.withRetry(() =>
+      pool.query(
+        `SELECT payload FROM probe_events WHERE ${where} ORDER BY timestamp ASC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        [...params, limit, offset],
+      ),
     );
 
     return {
@@ -492,6 +617,23 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_events_correlation ON probe_events (correlation_id) WHERE correlation_id IS NOT NULL;
       CREATE INDEX IF NOT EXISTS idx_sessions_status ON probe_sessions (status);
       CREATE INDEX IF NOT EXISTS idx_sessions_started ON probe_sessions (started_at DESC);
+    `,
+  },
+  {
+    version: 2,
+    name: 'additional_indexes',
+    sql: `
+      -- Composite index for filtered event queries (session + time range + type)
+      CREATE INDEX IF NOT EXISTS idx_events_session_ts_type
+        ON probe_events (session_id, timestamp DESC, type);
+
+      -- Session name search (prefix + ILIKE support)
+      CREATE INDEX IF NOT EXISTS idx_sessions_name_pattern
+        ON probe_sessions (name text_pattern_ops);
+
+      -- Composite index: active sessions sorted by recency
+      CREATE INDEX IF NOT EXISTS idx_sessions_status_started
+        ON probe_sessions (status, started_at DESC);
     `,
   },
 ];

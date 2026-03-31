@@ -281,7 +281,7 @@ export class SessionManager {
         let errors = 0;
         for (const e of sorted) {
           bySource[e.source] = (bySource[e.source] ?? 0) + 1;
-          if ((e as unknown as Record<string, unknown>)['type'] === 'error') errors++;
+          if (e.type === 'error') errors++;
         }
 
         return {

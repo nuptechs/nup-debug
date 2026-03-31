@@ -14,8 +14,14 @@ export interface ProbeEvent {
   readonly sessionId: string;
   readonly timestamp: number;
   readonly source: EventSource;
+  readonly type?: string;
   readonly correlationId?: string;
   readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
+/** Extract the sub-type discriminator from any probe event */
+export function getEventType(event: ProbeEvent): string | undefined {
+  return event.type;
 }
 
 // ============================================================

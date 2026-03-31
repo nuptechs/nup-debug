@@ -14,10 +14,19 @@ import type { DebugSession, ProbeEvent } from '../types/index.js';
 
 export class FileStorageAdapter extends StoragePort {
   private readonly basePath: string;
+  private readonly writeLocks = new Map<string, Promise<void>>();
 
   constructor(basePath: string = '.probe-data') {
     super();
     this.basePath = basePath;
+  }
+
+  /** Serialize writes per session to prevent interleaved appends */
+  private async withWriteLock(sessionId: string, fn: () => Promise<void>): Promise<void> {
+    const prev = this.writeLocks.get(sessionId) ?? Promise.resolve();
+    const next = prev.then(fn, fn); // Always chain even if previous failed
+    this.writeLocks.set(sessionId, next);
+    await next;
   }
 
   // ---- Helpers ----
@@ -80,6 +89,7 @@ export class FileStorageAdapter extends StoragePort {
   async deleteSession(id: string): Promise<void> {
     const dir = this.sessionDir(id);
     await rm(dir, { recursive: true, force: true });
+    this.writeLocks.delete(id);
   }
 
   async updateSessionStatus(
@@ -96,15 +106,19 @@ export class FileStorageAdapter extends StoragePort {
   // ---- Event storage ----
 
   async appendEvent(sessionId: string, event: ProbeEvent): Promise<void> {
-    const file = this.eventsFile(sessionId);
-    await appendFile(file, JSON.stringify(event) + '\n', 'utf-8');
+    await this.withWriteLock(sessionId, async () => {
+      const file = this.eventsFile(sessionId);
+      await appendFile(file, JSON.stringify(event) + '\n', 'utf-8');
+    });
   }
 
   async appendEvents(sessionId: string, events: ProbeEvent[]): Promise<void> {
     if (events.length === 0) return;
-    const file = this.eventsFile(sessionId);
-    const lines = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
-    await appendFile(file, lines, 'utf-8');
+    await this.withWriteLock(sessionId, async () => {
+      const file = this.eventsFile(sessionId);
+      const lines = events.map((e) => JSON.stringify(e)).join('\n') + '\n';
+      await appendFile(file, lines, 'utf-8');
+    });
   }
 
   async getEvents(sessionId: string, filter?: EventFilter): Promise<ProbeEvent[]> {
@@ -173,7 +187,7 @@ export class FileStorageAdapter extends StoragePort {
   }
 
   async close(): Promise<void> {
-    // No-op — file handles are not held open
+    this.writeLocks.clear();
   }
 
   // ---- Filter matching ----
@@ -184,8 +198,7 @@ export class FileStorageAdapter extends StoragePort {
     if (filter.source && !filter.source.includes(event.source)) return false;
 
     if (filter.types) {
-      const eventType = (event as unknown as Record<string, unknown>).type as string | undefined;
-      if (!eventType || !filter.types.includes(eventType)) return false;
+      if (!event.type || !filter.types.includes(event.type)) return false;
     }
 
     if (filter.fromTime != null && event.timestamp < filter.fromTime) return false;

@@ -1,0 +1,14 @@
+hardening: circuit breaker, retry, write locks, zod validation, CSP, audit logging
+
+- Postgres: inlined StorageCircuitBreaker (closed/open/half-open state machine)
+- Postgres: withRetry() with exponential backoff on all 12+ query methods
+- Postgres: transient error classification (9 error patterns including deadlocks)
+- Postgres: migration v2 with composite indexes for filtered queries + name search
+- File storage: per-session async write lock preventing JSONL corruption
+- Type safety: added optional type field to ProbeEvent, eliminated 8 as-unknown casts
+- Input validation: zod schemas on all session + event routes (name, batch size, limits)
+- Security: proper CSP headers (default-src self, frame-ancestors none, etc.)
+- Security: JSON body limit reduced from 50MB to 10MB
+- Security: per-event size limit 256KB on event ingestion
+- Audit logging: session create/delete/status-change with IP + sessionId
+- Tests: 157/157 passing, 10/10 files

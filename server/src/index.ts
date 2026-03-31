@@ -84,13 +84,26 @@ async function main(): Promise<void> {
 
   // Security headers
   app.use(helmet({
-    contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
   }));
 
   // Middleware — CORS restricted to configured origins
   const corsOrigins = env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
   app.use(cors(corsOrigins.length ? { origin: corsOrigins, credentials: true } : undefined));
-  app.use(express.json({ type: 'application/json', limit: '50mb', strict: true }));
+  app.use(express.json({ type: 'application/json', limit: '10mb', strict: true }));
   app.use(requestLogger);
 
   // Rate limiter: 200 req/s sustained, 500 burst per IP

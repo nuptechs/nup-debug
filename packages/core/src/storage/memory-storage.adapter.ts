@@ -101,8 +101,7 @@ export class MemoryStorageAdapter extends StoragePort {
     if (filter.source && !filter.source.includes(event.source)) return false;
 
     if (filter.types) {
-      const eventType = (event as unknown as Record<string, unknown>).type as string | undefined;
-      if (!eventType || !filter.types.includes(eventType)) return false;
+      if (!event.type || !filter.types.includes(event.type)) return false;
     }
 
     if (filter.fromTime != null && event.timestamp < filter.fromTime) return false;

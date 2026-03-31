@@ -132,10 +132,10 @@ describe('Sessions API', () => {
       expect(res.body.sessions[0].name).toBe('production-bug');
     });
 
-    it('clamps limit to 200', async () => {
+    it('rejects limit over 200 with 400', async () => {
       const res = await request(app).get('/api/sessions?limit=999');
-      expect(res.status).toBe(200);
-      // The route clamps to 200 — just ensure no error
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/Validation failed/);
     });
   });
 

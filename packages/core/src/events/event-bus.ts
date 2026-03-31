@@ -114,9 +114,8 @@ export class EventBus {
    * Format: "{source}:{type}" e.g. "browser:click", "network:request"
    */
   static eventType(event: ProbeEvent): string {
-    const type = (event as unknown as Record<string, unknown>)['type'];
-    if (typeof type === 'string') {
-      return `${event.source}:${type}`;
+    if (event.type) {
+      return `${event.source}:${event.type}`;
     }
     return event.source;
   }

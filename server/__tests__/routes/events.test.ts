@@ -89,7 +89,7 @@ describe('Events API', () => {
         .post(`/api/sessions/${sessionId}/events`)
         .send({ events });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/Batch size/);
+      expect(res.body.error).toMatch(/Validation failed/);
     });
 
     it('validates event structure', async () => {
@@ -97,7 +97,7 @@ describe('Events API', () => {
         .post(`/api/sessions/${sessionId}/events`)
         .send({ events: [{ bad: 'data' }] });
       expect(res.status).toBe(400);
-      expect(res.body.error).toMatch(/id, sessionId, timestamp, and source/);
+      expect(res.body.error).toMatch(/Validation failed/);
     });
   });
 
@@ -144,10 +144,10 @@ describe('Events API', () => {
       expect(res.body.events.every((e: { source: string }) => e.source === 'network')).toBe(true);
     });
 
-    it('handles invalid limit/offset gracefully', async () => {
+    it('rejects invalid limit/offset with 400', async () => {
       const res = await request(app).get(`/api/sessions/${sessionId}/events?limit=abc&offset=-1`);
-      expect(res.status).toBe(200);
-      // Should use defaults (limit=500, offset=0)
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/Validation failed/);
     });
   });
 
