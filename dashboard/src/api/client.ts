@@ -104,7 +104,11 @@ export const api = {
       request<unknown>(`/sessions/${encodeURIComponent(sessionId)}/report`, { params: { format } }),
   },
   health: {
-    check: () => request<{ status: string; uptime: number }>('/health'),
+    check: async (): Promise<{ status: string; uptime: number }> => {
+      const res = await fetch('/health');
+      if (!res.ok) throw new ApiError(res.status, res.statusText);
+      return res.json() as Promise<{ status: string; uptime: number }>;
+    },
   },
 };
 

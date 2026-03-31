@@ -16,6 +16,18 @@ export default defineConfig({
         target: 'http://localhost:7070',
         changeOrigin: true,
       },
+      '/health': {
+        target: 'http://localhost:7070',
+        changeOrigin: true,
+      },
+      '/ready': {
+        target: 'http://localhost:7070',
+        changeOrigin: true,
+      },
+      '/metrics': {
+        target: 'http://localhost:7070',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'ws://localhost:7070',
         ws: true,
@@ -25,5 +37,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
   },
 });

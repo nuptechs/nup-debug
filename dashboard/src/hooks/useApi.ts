@@ -14,6 +14,7 @@ export function useSession(id: string) {
     queryKey: ['sessions', id],
     queryFn: () => api.sessions.get(id),
     refetchInterval: 3000,
+    enabled: !!id,
   });
 }
 
@@ -22,6 +23,7 @@ export function useSessionEvents(sessionId: string, params?: { source?: string; 
     queryKey: ['events', sessionId, params],
     queryFn: () => api.events.list(sessionId, params),
     refetchInterval: 5000,
+    enabled: !!sessionId,
   });
 }
 
@@ -29,6 +31,7 @@ export function useTimeline(sessionId: string) {
   return useQuery({
     queryKey: ['timeline', sessionId],
     queryFn: () => api.events.timeline(sessionId),
+    enabled: !!sessionId,
   });
 }
 
