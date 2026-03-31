@@ -14,6 +14,7 @@ export const eventsRouter = Router();
 
 const MAX_BATCH_SIZE = 1000;
 const MAX_EVENT_JSON_SIZE = 256 * 1024; // 256KB per event
+const MAX_PAYLOAD_SIZE = MAX_BATCH_SIZE * MAX_EVENT_JSON_SIZE; // total batch cap
 
 // ---- Schemas ----
 
@@ -22,7 +23,7 @@ const eventSchema = z.object({
   sessionId: z.string().min(1).max(128),
   timestamp: z.number().finite(),
   source: z.enum(['browser', 'network', 'log', 'sdk', 'correlation']),
-}).passthrough();
+}).catchall(z.unknown());
 
 const ingestSchema = z.union([
   z.object({ events: z.array(eventSchema).min(1).max(MAX_BATCH_SIZE) }),
@@ -52,6 +53,13 @@ eventsRouter.post('/:id/events', asyncHandler(async (req: Request, res: Response
   const session = await manager.getSession(sessionId);
   if (!session) {
     res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  // Early reject on Content-Length to avoid parsing oversized payloads
+  const contentLength = Number(req.headers['content-length'] || 0);
+  if (contentLength > MAX_PAYLOAD_SIZE) {
+    res.status(413).json({ error: 'Payload too large' });
     return;
   }
 

@@ -159,7 +159,7 @@ export class BatchSender {
 
   /** POST a batch to the ingest endpoint. Returns true on 2xx. */
   private async sendBatch(batch: ProbeEvent[]): Promise<boolean> {
-    const url = `${this.config.serverUrl}/api/sessions/${this.config.sessionId}/events`;
+    const url = `${this.config.serverUrl}/api/sessions/${encodeURIComponent(this.config.sessionId)}/events`;
 
     const response = await fetch(url, {
       method: 'POST',

@@ -74,6 +74,8 @@ export class ProxyAdapter extends NetworkCapturePort {
       const [hostname, portStr] = (req.url ?? '').split(':');
       const targetPort = parseInt(portStr ?? '443', 10);
 
+      const TUNNEL_TIMEOUT_MS = 120_000;
+
       const serverSocket = net.connect(targetPort, hostname ?? '', () => {
         clientSocket.write(
           'HTTP/1.1 200 Connection Established\r\n\r\n',
@@ -82,6 +84,11 @@ export class ProxyAdapter extends NetworkCapturePort {
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
       });
+
+      serverSocket.setTimeout(TUNNEL_TIMEOUT_MS, () => { serverSocket.destroy(); clientSocket.destroy(); });
+      // clientSocket is a Duplex — use a manual idle timer
+      const clientTimeout = setTimeout(() => { clientSocket.destroy(); serverSocket.destroy(); }, TUNNEL_TIMEOUT_MS);
+      clientSocket.on('close', () => clearTimeout(clientTimeout));
 
       serverSocket.on('error', () => {
         clientSocket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');

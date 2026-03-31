@@ -101,10 +101,20 @@ export function installXhrInterceptor(config: XhrInterceptorConfig): () => void 
         metadata.delete(xhr);
       };
 
-      xhr.addEventListener('load', () => emitEnd());
-      xhr.addEventListener('error', () => emitEnd('Network error'));
-      xhr.addEventListener('abort', () => emitEnd('Request aborted'));
-      xhr.addEventListener('timeout', () => emitEnd('Request timed out'));
+      const removeListeners = () => {
+        xhr.removeEventListener('load', onLoad);
+        xhr.removeEventListener('error', onError);
+        xhr.removeEventListener('abort', onAbort);
+        xhr.removeEventListener('timeout', onTimeout);
+      };
+      const onLoad = () => { removeListeners(); emitEnd(); };
+      const onError = () => { removeListeners(); emitEnd('Network error'); };
+      const onAbort = () => { removeListeners(); emitEnd('Request aborted'); };
+      const onTimeout = () => { removeListeners(); emitEnd('Request timed out'); };
+      xhr.addEventListener('load', onLoad);
+      xhr.addEventListener('error', onError);
+      xhr.addEventListener('abort', onAbort);
+      xhr.addEventListener('timeout', onTimeout);
     }
 
     originalSend.call(xhr, body);

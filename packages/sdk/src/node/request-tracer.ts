@@ -24,6 +24,7 @@ interface ActiveRequest {
 
 export class RequestTracer {
   private readonly collector: SdkEventCollector;
+  private static readonly MAX_ACTIVE = 10_000;
   private readonly activeRequests = new Map<string, ActiveRequest>();
   private cleanupTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -42,6 +43,12 @@ export class RequestTracer {
     const requestId = generateRequestId();
     const correlationId = generateCorrelationId();
     const startTime = nowMs();
+
+    // Evict oldest if at capacity
+    if (this.activeRequests.size >= RequestTracer.MAX_ACTIVE) {
+      const oldest = this.activeRequests.keys().next().value;
+      if (oldest) this.activeRequests.delete(oldest);
+    }
 
     this.activeRequests.set(requestId, { requestId, correlationId, startTime });
 

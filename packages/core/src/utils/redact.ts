@@ -38,6 +38,22 @@ export function redactHeaders(
   return result;
 }
 
+// Pre-compiled field patterns cache for redactBody performance
+const fieldPatternCache = new Map<string, RegExp>();
+
+function getFieldPattern(key: string): RegExp {
+  let re = fieldPatternCache.get(key);
+  if (!re) {
+    re = new RegExp(
+      `("${escapeRegex(key)}"\\s*:\\s*)("[^"]*"|\\d+|true|false|null)`,
+      'gi',
+    );
+    fieldPatternCache.set(key, re);
+  }
+  re.lastIndex = 0;
+  return re;
+}
+
 /** Redact sensitive values from a JSON body string */
 export function redactBody(body: string, sensitiveFields?: string[]): string {
   if (!body) return body;
@@ -46,17 +62,14 @@ export function redactBody(body: string, sensitiveFields?: string[]): string {
 
   // Redact known patterns (JWTs, credit cards, SSNs)
   for (const pattern of DEFAULT_SENSITIVE_PATTERNS) {
+    pattern.lastIndex = 0; // reset stateful /g flag
     redacted = redacted.replace(pattern, '[REDACTED]');
   }
 
   // Redact sensitive JSON fields
   const allKeys = [...DEFAULT_SENSITIVE_KEYS, ...(sensitiveFields ?? [])];
   for (const key of allKeys) {
-    // Match "key": "value" or "key":"value" with various value types
-    const fieldPattern = new RegExp(
-      `("${escapeRegex(key)}"\\s*:\\s*)("[^"]*"|\\d+|true|false|null)`,
-      'gi',
-    );
+    const fieldPattern = getFieldPattern(key);
     redacted = redacted.replace(fieldPattern, '$1"[REDACTED]"');
   }
 

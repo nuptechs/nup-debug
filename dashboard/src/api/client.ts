@@ -1,5 +1,9 @@
 const BASE_URL = '/api';
 
+function getApiKey(): string {
+  return localStorage.getItem('probe-api-key') ?? '';
+}
+
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
@@ -17,10 +21,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (qs) url += `?${qs}`;
   }
 
+  const apiKey = getApiKey();
   const res = await fetch(url, {
     ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
+      ...(apiKey ? { 'x-api-key': apiKey } : {}),
       ...fetchOptions.headers,
     },
   });

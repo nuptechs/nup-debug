@@ -12,6 +12,7 @@ interface SessionEntry {
 }
 
 export class MemoryStorageAdapter extends StoragePort {
+  private static readonly MAX_EVENTS_PER_SESSION = 100_000;
   private store = new Map<string, SessionEntry>();
 
   // ---- Session CRUD ----
@@ -52,6 +53,9 @@ export class MemoryStorageAdapter extends StoragePort {
   async appendEvent(sessionId: string, event: ProbeEvent): Promise<void> {
     const entry = this.store.get(sessionId);
     if (!entry) throw new Error(`Session not found: ${sessionId}`);
+    if (entry.events.length >= MemoryStorageAdapter.MAX_EVENTS_PER_SESSION) {
+      entry.events.splice(0, 1); // drop oldest
+    }
     entry.events.push(structuredClone(event));
   }
 
@@ -59,6 +63,9 @@ export class MemoryStorageAdapter extends StoragePort {
     const entry = this.store.get(sessionId);
     if (!entry) throw new Error(`Session not found: ${sessionId}`);
     for (const event of events) {
+      if (entry.events.length >= MemoryStorageAdapter.MAX_EVENTS_PER_SESSION) {
+        entry.events.splice(0, 1); // drop oldest
+      }
       entry.events.push(structuredClone(event));
     }
   }

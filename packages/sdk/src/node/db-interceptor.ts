@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { SdkConfig, SdkDbQueryEvent } from '@probe/core';
-import { nowMs, isSensitiveKey } from '@probe/core';
+import { nowMs } from '@probe/core';
 import { getCurrentRequestId, getCurrentCorrelationId } from './context.js';
 import { SdkEventCollector } from './event-collector.js';
 
@@ -173,13 +173,11 @@ function redactParams(
     }
     // Also check custom patterns provided by config
     for (const customPattern of redactPatterns) {
-      if (isSensitiveKey(customPattern) && param.length > 0) {
-        // If the param is *exactly* a value matching a sensitive key pattern, redact it
-        try {
-          const re = new RegExp(customPattern, 'gi');
-          result = result.replace(re, '[REDACTED]');
-        } catch { /* skip invalid regex */ }
-      }
+      if (customPattern.length > 500) continue; // skip overly long patterns
+      try {
+        const re = new RegExp(customPattern, 'gi');
+        result = result.replace(re, '[REDACTED]');
+      } catch { /* skip invalid regex */ }
     }
     return result;
   });

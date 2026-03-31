@@ -76,9 +76,14 @@ export function createProbeMiddleware(
       return;
     }
 
-    // Extract or generate correlation ID
+    // Extract or generate correlation ID (validate length + format)
     const incomingCorrelation = req.headers[config.correlationHeader];
-    const correlationId = (typeof incomingCorrelation === 'string' && incomingCorrelation)
+    const correlationId = (
+      typeof incomingCorrelation === 'string'
+      && incomingCorrelation.length > 0
+      && incomingCorrelation.length <= 128
+      && /^[\w\-.]+$/.test(incomingCorrelation)
+    )
       ? incomingCorrelation
       : generateCorrelationId();
 

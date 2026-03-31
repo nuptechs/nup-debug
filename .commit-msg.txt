@@ -1,18 +1,18 @@
-hardening round 3: path traversal, CORS, SSL, auth guard, timing-safe keys
+fix(security): round 5 — memory leaks, regex state, tunnel DoS, auth, perf
 
-CRITICAL:
-- All :id route params validated via sessionIdSchema (regex /^[\w-]+$/)
-  prevents path traversal in FileStorageAdapter
+HIGH fixes:
+- XHR interceptor: remove listeners on completion to prevent leak on reused instances
+- Global /g regex: reset lastIndex before each redactBody call (prevented ~50% miss rate)
+- CONNECT tunnel: add 120s idle timeout on piped sockets (prevents resource exhaustion)
 
-HIGH:
-- CORS: deny all origins in production when CORS_ORIGINS is unset
-- SSL: default to rejectUnauthorized: true (was false - MITM vector)
-- PROBE_AUTH_DISABLED=1 now kills process in production (was silently honored)
-
-MEDIUM:
-- API key comparison now uses timing-safe constant-time check
-- WebSocket connections drained on graceful shutdown (wss returned + closed)
-- Timeline/groups rebuild capped at 50K events (matches correlator cap)
-- Report error handler no longer leaks internal details in any environment
-
-10/10 builds, 188/188 tests
+MEDIUM fixes:
+- Correlation ID: validate length (<=128) and format ([\w\-.]+) from client headers
+- Dashboard API: send x-api-key header from localStorage on all requests
+- Event schema: replace .passthrough() with .catchall(z.unknown()) to limit arbitrary fields
+- Event ingest: add Content-Length early rejection against MAX_PAYLOAD_SIZE (413)
+- DB interceptor: cap custom redactPatterns length to 500 chars (ReDoS prevention)
+- StdoutLogAdapter: cap lineBuffer at 1MB, force-flush oversized lines
+- RequestTracer: cap activeRequests Map at 10,000 with FIFO eviction
+- MemoryStorage: cap events per session at 100,000 with oldest-drop
+- redactBody: pre-compile and cache field pattern regexes (eliminate per-call compilation)
+- BatchSender: URL-encode sessionId in API endpoint URL
