@@ -2,7 +2,8 @@
 // InstrumentedStorage — Wraps any StoragePort with Prometheus metrics
 // ============================================================
 
-import type { StoragePort, EventFilter, SessionListOptions } from '@probe/core';
+import { StoragePort } from '@probe/core';
+import type { EventFilter, SessionListOptions } from '@probe/core';
 import type { DebugSession, ProbeEvent } from '@probe/core';
 import {
   storageOperationDuration,
@@ -14,11 +15,12 @@ import {
  * Decorator that wraps a StoragePort to record operation latency, counts, and errors.
  * The underlying adapter is fully delegated to — this is a transparent wrapper.
  */
-export class InstrumentedStorage {
+export class InstrumentedStorage extends StoragePort {
   private readonly inner: StoragePort;
   private readonly storageType: string;
 
   constructor(inner: StoragePort, storageType: string) {
+    super();
     this.inner = inner;
     this.storageType = storageType;
   }

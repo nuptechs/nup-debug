@@ -14,6 +14,6 @@ metricsRouter.get('/metrics', async (_req: Request, res: Response) => {
     res.set('Content-Type', registry.contentType);
     res.end(metrics);
   } catch (err) {
-    res.status(500).end('# Error collecting metrics');
+    res.status(500).json({ error: 'Metrics collection failed' });
   }
 });

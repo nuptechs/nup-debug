@@ -65,7 +65,12 @@ export class PlaywrightBrowserAdapter extends BrowserAgentPort {
     this.attachPageListeners(this.page);
 
     if (config.targetUrl) {
-      await this.page.goto(config.targetUrl, { waitUntil: 'domcontentloaded' });
+      try {
+        await this.page.goto(config.targetUrl, { waitUntil: 'domcontentloaded' });
+      } catch (err) {
+        await this.close();
+        throw err;
+      }
     }
 
     if (config.screenshotInterval && config.screenshotInterval > 0) {

@@ -298,12 +298,13 @@ export class SessionManager {
     return entry;
   }
 
-  /** Evict least-recently-used correlators when over the cap */
+  /** Evict least-recently-used correlators when over the cap (with 10% hysteresis) */
   private evictStaleCorrelators(): void {
     if (this.correlators.size <= MAX_CORRELATORS) return;
+    const targetCount = Math.floor(MAX_CORRELATORS * 0.9);
     const entries = [...this.correlators.entries()]
       .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-    const toEvict = entries.slice(0, this.correlators.size - MAX_CORRELATORS);
+    const toEvict = entries.slice(0, this.correlators.size - targetCount);
     for (const [id] of toEvict) {
       this.correlators.delete(id);
     }

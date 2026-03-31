@@ -69,10 +69,12 @@ export class MemoryStorageAdapter extends StoragePort {
     const entry = this.store.get(sessionId);
     if (!entry) throw new Error(`Session not found: ${sessionId}`);
     for (const event of events) {
-      if (entry.events.length >= MemoryStorageAdapter.MAX_EVENTS_PER_SESSION) {
-        entry.events.splice(0, 1); // drop oldest
-      }
       entry.events.push(structuredClone(event));
+    }
+    // Batch trim: single O(n) splice instead of per-event O(n) splice
+    if (entry.events.length > MemoryStorageAdapter.MAX_EVENTS_PER_SESSION) {
+      const excess = entry.events.length - MemoryStorageAdapter.MAX_EVENTS_PER_SESSION;
+      entry.events.splice(0, excess);
     }
   }
 

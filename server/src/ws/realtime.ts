@@ -16,7 +16,6 @@ import {
   wsMessagesReceived,
   wsMessagesSent,
   wsSubscriptionsActive,
-  errorsTotal,
 } from '../lib/metrics.js';
 
 interface SubscribeMessage {
@@ -49,6 +48,7 @@ const PING_INTERVAL_MS = 30_000;
 const MAX_MESSAGE_SIZE = 4096; // 4KB max for control messages
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX = 20; // max 20 messages per second
+const RATE_LIMIT_CLOSE_THRESHOLD = 5; // close conn after 5 consecutive rate-limit windows
 const MAX_CONNECTIONS_PER_IP = 50;
 const MAX_SUBSCRIPTIONS_PER_CLIENT = 50;
 
@@ -56,7 +56,7 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
   const wss = new WebSocketServer({ server, maxPayload: MAX_MESSAGE_SIZE });
   const subscriptions = new Map<WebSocket, Set<string>>();
   const alive = new Map<WebSocket, boolean>();
-  const messageCounts = new Map<WebSocket, { count: number; resetAt: number }>();
+  const messageCounts = new Map<WebSocket, { count: number; resetAt: number; violations: number }>();
   const connectionsPerIp = new Map<string, number>();
   const wsToIp = new Map<WebSocket, string>();
 
@@ -138,21 +138,22 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       ws.close(1008, 'Too many connections');
       return;
     }
-    connectionsPerIp.set(ip, currentCount + 1);
-    wsToIp.set(ws, ip);
-    wsConnectionsTotal.inc();
-    wsConnectionsActive.inc();
-
-    // Origin validation — reject cross-origin WebSocket hijacking
+    // Origin validation — reject cross-origin WebSocket hijacking (BEFORE accepting)
     const allowedOrigins = (process.env['CORS_ORIGINS'] ?? '').split(',').map(s => s.trim()).filter(Boolean);
     if (allowedOrigins.length > 0) {
       const origin = req.headers.origin ?? '';
       if (!allowedOrigins.includes(origin)) {
-        logger.warn({ origin, ip: req.socket.remoteAddress }, 'WebSocket connection rejected: invalid origin');
+        logger.warn({ origin, ip }, 'WebSocket connection rejected: invalid origin');
+        wsConnectionsRejected.inc({ reason: 'origin' });
         ws.close(1008, 'Invalid origin');
         return;
       }
     }
+
+    connectionsPerIp.set(ip, currentCount + 1);
+    wsToIp.set(ws, ip);
+    wsConnectionsTotal.inc();
+    wsConnectionsActive.inc();
 
     subscriptions.set(ws, new Set());
     alive.set(ws, true);
@@ -166,13 +167,20 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       const now = Date.now();
       let rate = messageCounts.get(ws);
       if (!rate || now >= rate.resetAt) {
-        rate = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+        rate = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS, violations: rate?.violations ?? 0 };
         messageCounts.set(ws, rate);
       }
       rate.count++;
       if (rate.count > RATE_LIMIT_MAX) {
-        logger.warn({ ip: req.socket.remoteAddress, count: rate.count }, 'WebSocket rate limit exceeded');
-        wsConnectionsRejected.inc({ reason: 'rate_limit' });
+        rate.violations++;
+        logger.warn({ ip: req.socket.remoteAddress, count: rate.count, violations: rate.violations }, 'WebSocket rate limit exceeded');
+        wsMessagesReceived.inc({ type: 'rate_limited' });
+        if (rate.violations >= RATE_LIMIT_CLOSE_THRESHOLD) {
+          logger.warn({ ip: req.socket.remoteAddress }, 'WebSocket closed: repeated rate limit violations');
+          wsConnectionsRejected.inc({ reason: 'rate_limit' });
+          ws.close(1008, 'Rate limit exceeded');
+          return;
+        }
         ws.send(JSON.stringify({ type: 'error', message: 'Rate limit exceeded' }));
         return;
       }
@@ -186,6 +194,7 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       }
 
       if (!msg.type || !msg.sessionId || typeof msg.sessionId !== 'string') {
+        logger.warn({ ip: req.socket.remoteAddress }, 'WebSocket malformed message: missing type or sessionId');
         ws.send(JSON.stringify({ type: 'error', message: 'Missing type or sessionId' }));
         return;
       }

@@ -36,16 +36,23 @@ export function wrapRedisClient(client: any, config: RedisInterceptorConfig): an
   if (originals.has(client)) return client; // already wrapped
 
   const saved: Record<string, Function> = {};
+  const patches: Record<string, Function> = {};
 
+  // Build all patches first — if anything throws, the client stays unwrapped
   for (const cmd of INTERCEPTED_COMMANDS) {
     if (typeof client[cmd] !== 'function') continue;
 
     saved[cmd] = client[cmd].bind(client);
     const originalCmd = saved[cmd]!;
 
-    client[cmd] = function probeWrappedRedisCmd(...args: unknown[]): unknown {
+    patches[cmd] = function probeWrappedRedisCmd(...args: unknown[]): unknown {
       return interceptCommand(originalCmd, cmd, args, config);
     };
+  }
+
+  // Apply all patches atomically
+  for (const [cmd, patch] of Object.entries(patches)) {
+    client[cmd] = patch;
   }
 
   originals.set(client, saved);
