@@ -18,6 +18,7 @@ import { generateSessionId, nowMs, DEFAULT_CORRELATION_CONFIG } from '@probe/cor
 import type { CorrelatorPort } from '@probe/core';
 import type { StoragePort, EventFilter } from '@probe/core';
 import type { SessionListOptions } from '@probe/core';
+import { EventCorrelator } from '@probe/correlation-engine';
 import {
   sessionsCreatedTotal,
   sessionsDeletedTotal,
@@ -55,7 +56,6 @@ type EventIngestListener = (sessionId: string, events: ProbeEvent[]) => void;
 
 const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours default
 const PURGE_INTERVAL_MS = 5 * 60 * 1000; // check every 5 minutes
-const MAX_CORRELATOR_EVENTS = 50_000; // cap per-session correlator memory
 const MAX_CORRELATORS = 200; // max concurrent in-memory correlators
 
 export class SessionManager {
@@ -321,70 +321,11 @@ export class SessionManager {
   }
 
   /**
-   * Inline correlator — same logic as before, no changes needed.
+   * Create a real EventCorrelator backed by the correlation engine.
    */
-  private createCorrelatorSync(_config: CorrelationConfig): CorrelatorPort {
-    const events: ProbeEvent[] = [];
-    const groups: CorrelationGroup[] = [];
-    const groupHandlers: Array<(g: CorrelationGroup) => void> = [];
-    const updateHandlers: Array<(g: CorrelationGroup) => void> = [];
-
-    return {
-      initialize() { /* config already captured */ },
-      reset() {
-        events.length = 0;
-        groups.length = 0;
-      },
-      ingest(event: ProbeEvent) {
-        events.push(event);
-        // Cap in-memory events to prevent unbounded growth
-        if (events.length > MAX_CORRELATOR_EVENTS) {
-          events.splice(0, events.length - MAX_CORRELATOR_EVENTS);
-        }
-      },
-      getGroups() {
-        return groups;
-      },
-      getGroup(id: string) {
-        return groups.find((g) => g.id === id);
-      },
-      getGroupByCorrelationId(correlationId: string) {
-        return groups.find((g) => g.correlationId === correlationId);
-      },
-      buildTimeline(): Timeline {
-        const sorted = [...events].sort((a, b) => a.timestamp - b.timestamp);
-        const startTime = sorted[0]?.timestamp ?? 0;
-        const endTime = sorted[sorted.length - 1]?.timestamp ?? 0;
-
-        const bySource: Record<string, number> = {};
-        let errors = 0;
-        for (const e of sorted) {
-          bySource[e.source] = (bySource[e.source] ?? 0) + 1;
-          if (e.type === 'error') errors++;
-        }
-
-        return {
-          sessionId: sorted[0]?.sessionId ?? '',
-          entries: sorted.map((event) => ({ event, depth: 0, groupId: undefined })),
-          duration: endTime - startTime,
-          startTime,
-          endTime,
-          stats: {
-            totalEvents: sorted.length,
-            bySource: bySource as Record<EventSource, number>,
-            correlationGroups: groups.length,
-            errors,
-          },
-        };
-      },
-      onGroupCreated(handler: (g: CorrelationGroup) => void) {
-        groupHandlers.push(handler);
-        return () => { groupHandlers.splice(groupHandlers.indexOf(handler), 1); };
-      },
-      onGroupUpdated(handler: (g: CorrelationGroup) => void) {
-        updateHandlers.push(handler);
-        return () => { updateHandlers.splice(updateHandlers.indexOf(handler), 1); };
-      },
-    } as unknown as CorrelatorPort;
+  private createCorrelatorSync(config: CorrelationConfig): CorrelatorPort {
+    const correlator = new EventCorrelator();
+    correlator.initialize(config);
+    return correlator;
   }
 }

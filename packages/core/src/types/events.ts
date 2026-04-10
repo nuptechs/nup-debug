@@ -181,7 +181,8 @@ export type SdkEventType =
   | 'db-query'
   | 'cache-op'
   | 'custom-span'
-  | 'custom';
+  | 'custom'
+  | 'exception';
 
 export interface SdkEvent extends ProbeEvent {
   readonly source: 'sdk';
@@ -235,6 +236,14 @@ export interface SdkCustomEvent extends SdkEvent {
   readonly type: 'custom';
   readonly name: string;
   readonly data?: Readonly<Record<string, unknown>>;
+}
+
+export interface SdkExceptionEvent extends SdkEvent {
+  readonly type: 'exception';
+  readonly exception: string;
+  readonly message: string;
+  readonly statusCode?: number;
+  readonly stack?: string;
 }
 
 // ============================================================
@@ -309,7 +318,8 @@ export type AnySdkEvent =
   | SdkDbQueryEvent
   | SdkCacheEvent
   | SdkCustomSpanEvent
-  | SdkCustomEvent;
+  | SdkCustomEvent
+  | SdkExceptionEvent;
 
 export type AnyProbeEvent = AnyBrowserEvent | AnyNetworkEvent | LogEvent | AnySdkEvent;
 

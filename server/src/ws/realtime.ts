@@ -162,7 +162,7 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       alive.set(ws, true);
     });
 
-    ws.on('message', (data: Buffer | string) => {
+    ws.on('message', async (data: Buffer | string) => {
       // Rate limiting
       const now = Date.now();
       let rate = messageCounts.get(ws);
@@ -209,9 +209,15 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
       if (!subs) return;
 
       switch (msg.type) {
-        case 'subscribe':
+        case 'subscribe': {
           if (subs.size >= MAX_SUBSCRIPTIONS_PER_CLIENT) {
             ws.send(JSON.stringify({ type: 'error', message: `Max ${MAX_SUBSCRIPTIONS_PER_CLIENT} subscriptions per client` }));
+            break;
+          }
+          // Validate that the session exists before allowing subscription
+          const session = await sessionManager.getSession(msg.sessionId);
+          if (!session) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Session not found' }));
             break;
           }
           subs.add(msg.sessionId);
@@ -219,6 +225,7 @@ export function setupWebSocket(server: HttpServer, sessionManager: SessionManage
           wsMessagesReceived.inc({ type: 'subscribe' });
           ws.send(JSON.stringify({ type: 'subscribed', sessionId: msg.sessionId }));
           break;
+        }
         case 'unsubscribe':
           if (subs.has(msg.sessionId)) {
             subs.delete(msg.sessionId);
