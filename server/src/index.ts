@@ -21,8 +21,8 @@ import { createRateLimiter } from './middleware/rate-limiter.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { logger } from './logger.js';
-import { createStorage } from '@probe/core';
-import type { StorageConfig } from '@probe/core';
+import { createStorage, PostgresWebhookEventStore, WebhookNotificationAdapter } from '@probe/core';
+import type { StorageConfig, WebhookEventStore } from '@probe/core';
 import { instrumentStorage } from './lib/instrumented-storage.js';
 import { buildNotificationPort } from './lib/notification-factory.js';
 import {
@@ -78,11 +78,26 @@ async function main(): Promise<void> {
   logger.info({ storage: storageConfig.type }, 'Storage initialized');
 
   // ---- Notification port (webhooks) ----
-  const { notification } = buildNotificationPort({
+  // When Postgres storage is used, persist webhook deliveries in the same DB
+  // so retries survive restarts. Otherwise use in-memory store.
+  let webhookStore: WebhookEventStore | undefined;
+  if (storageConfig.type === 'postgres' && env.DATABASE_URL && env.WEBHOOK_URL && env.WEBHOOK_SECRET) {
+    const pgStore = new PostgresWebhookEventStore({ connectionString: env.DATABASE_URL });
+    try {
+      await pgStore.initialize();
+      webhookStore = pgStore;
+      logger.info('PostgresWebhookEventStore initialized');
+    } catch (err) {
+      logger.error({ err }, 'Failed to initialize PostgresWebhookEventStore — falling back to in-memory');
+    }
+  }
+
+  const { notification, store: notificationStore } = buildNotificationPort({
     url: env.WEBHOOK_URL,
     secret: env.WEBHOOK_SECRET,
     userAgent: env.WEBHOOK_USER_AGENT,
     timeoutMs: env.WEBHOOK_TIMEOUT_MS,
+    ...(webhookStore ? { store: webhookStore } : {}),
     logger,
   });
 
@@ -229,6 +244,16 @@ async function main(): Promise<void> {
     logger.info({ host: env.HOST, port: env.PORT, auth: enableAuth ? 'enabled' : 'disabled' }, `Listening on http://${env.HOST}:${env.PORT}`);
   });
 
+  // ---- Boot-time webhook recovery ----
+  // If deliveries were interrupted by a restart (pending/failed), resume them
+  // in the background. Staggered so a large backlog does not thunder the target.
+  if (
+    notificationStore instanceof PostgresWebhookEventStore &&
+    notification instanceof WebhookNotificationAdapter
+  ) {
+    void recoverPendingWebhooks(notificationStore, notification);
+  }
+
   // Graceful shutdown — drain connections before exit
   let isShuttingDown = false;
   const shutdown = (): void => {
@@ -261,6 +286,34 @@ async function main(): Promise<void> {
 
   process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+}
+
+/**
+ * Resume pending/failed webhook deliveries after a restart. Called in the
+ * background; never throws. Staggers resume calls so a large backlog does
+ * not overwhelm the target.
+ */
+async function recoverPendingWebhooks(
+  store: PostgresWebhookEventStore,
+  adapter: WebhookNotificationAdapter,
+): Promise<void> {
+  try {
+    const unfinished = await store.listUnfinished();
+    if (unfinished.length === 0) return;
+    logger.info({ count: unfinished.length }, 'Resuming pending webhook deliveries');
+    let idx = 0;
+    for (const evt of unfinished) {
+      const delay = idx * 100;
+      idx += 1;
+      setTimeout(() => {
+        void adapter.resume(evt.id).catch((err) => {
+          logger.warn({ err, eventId: evt.id }, 'Webhook resume failed');
+        });
+      }, delay).unref();
+    }
+  } catch (err) {
+    logger.error({ err }, 'Failed to query unfinished webhook events');
+  }
 }
 
 // ---- Process-level safety nets ----

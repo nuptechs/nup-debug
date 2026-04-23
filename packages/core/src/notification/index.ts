@@ -5,6 +5,10 @@
 export { NotificationPort, NoopNotificationAdapter } from './notification.port.js';
 export { WebhookEventStore, InMemoryWebhookEventStore, type WebhookEventListFilter } from './webhook-event-store.js';
 export {
+  PostgresWebhookEventStore,
+  type PostgresWebhookEventStoreConfig,
+} from './postgres-webhook-event-store.js';
+export {
   WebhookNotificationAdapter,
   WEBHOOK_MAX_RETRIES,
   WEBHOOK_RETRY_SCHEDULE_MS,

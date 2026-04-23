@@ -282,4 +282,72 @@ describe('WebhookNotificationAdapter', () => {
       expect(await adapter.retryDelivery('missing')).toBeNull();
     });
   });
+
+  describe('resume', () => {
+    it('returns null when no store is configured', async () => {
+      const adapter = new WebhookNotificationAdapter({
+        url: 'https://hook.example.com/',
+        secret: 'k',
+      });
+      expect(await adapter.resume('whatever')).toBeNull();
+    });
+
+    it('returns null for unknown id', async () => {
+      const store = new InMemoryWebhookEventStore();
+      const adapter = new WebhookNotificationAdapter({
+        url: 'https://hook.example.com/',
+        secret: 'k',
+        store,
+      });
+      expect(await adapter.resume('missing')).toBeNull();
+    });
+
+    it('resumes a pending event and delivers it', async () => {
+      harness.queueOk();
+      const store = new InMemoryWebhookEventStore();
+      const adapter = new WebhookNotificationAdapter({
+        url: 'https://hook.example.com/',
+        secret: 'k',
+        store,
+      });
+      const seeded = await store.create({
+        id: 'evt-seed',
+        targetUrl: 'https://hook.example.com/',
+        event: 'session.created',
+        payload: { a: 1 },
+        status: 'pending',
+        attempts: 0,
+        lastAttemptAt: null,
+        errorMessage: null,
+        createdAt: new Date().toISOString(),
+      });
+      const after = await adapter.resume(seeded.id);
+      await flushMicrotasks();
+      expect(after).not.toBeNull();
+      expect(after!.status).toBe('success');
+    });
+
+    it('is a no-op for success / dead_letter events', async () => {
+      const store = new InMemoryWebhookEventStore();
+      const adapter = new WebhookNotificationAdapter({
+        url: 'https://hook.example.com/',
+        secret: 'k',
+        store,
+      });
+      const seeded = await store.create({
+        id: 'evt-dead',
+        targetUrl: 'https://hook.example.com/',
+        event: 'session.created',
+        payload: { a: 1 },
+        status: 'dead_letter',
+        attempts: WEBHOOK_MAX_RETRIES,
+        lastAttemptAt: new Date().toISOString(),
+        errorMessage: 'exhausted',
+        createdAt: new Date().toISOString(),
+      });
+      const after = await adapter.resume(seeded.id);
+      expect(after!.status).toBe('dead_letter');
+      expect(harness.fakeFetch).not.toHaveBeenCalled();
+    });
+  });
 });

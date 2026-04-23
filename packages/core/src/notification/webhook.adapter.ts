@@ -172,6 +172,20 @@ export class WebhookNotificationAdapter extends NotificationPort {
     }, delay);
   }
 
+  /**
+   * Resume delivery of a previously persisted event WITHOUT resetting its
+   * status/attempt counter. Used by boot-time recovery to continue pending
+   * or failed deliveries after a restart — the retry schedule is honoured.
+   */
+  async resume(eventId: string): Promise<WebhookEvent | null> {
+    if (!this.store) return null;
+    const evt = await this.store.get(eventId);
+    if (!evt) return null;
+    if (evt.status === 'success' || evt.status === 'dead_letter') return evt;
+    await this._attemptDelivery(eventId);
+    return this.store.get(eventId);
+  }
+
   /** Manual retry of a persisted event (e.g. from an admin route). */
   async retryDelivery(eventId: string): Promise<WebhookEvent | null> {
     if (!this.store) return null;
