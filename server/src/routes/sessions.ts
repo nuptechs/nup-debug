@@ -22,6 +22,12 @@ const createSessionSchema = z.object({
   name: z.string().max(256).regex(/^[\w\s\-.:()[\]]+$/, 'Invalid session name characters').optional(),
   config: z.record(z.string(), z.unknown()).optional(),
   tags: z.array(z.string().max(64)).max(20).optional(),
+  // Optional fields for downstream integrations (e.g. Sentinel bootstrap).
+  // They are folded into `tags` using the `sentinel:` / `ext:` / `meta:`
+  // prefix convention so we don't need to widen DebugSession. (Gap 4)
+  projectId: z.string().min(1).max(128).optional(),
+  externalSessionId: z.string().min(1).max(128).optional(),
+  metadata: z.record(z.string().min(1).max(64), z.string().max(256)).optional(),
 }).strict().optional();
 
 const listSessionsSchema = z.object({
@@ -51,7 +57,19 @@ sessionsRouter.post('/', asyncHandler(async (req: Request, res: Response) => {
   const body = parsed.data;
   const name = body?.name ?? `session-${generateSessionId().slice(0, 8)}`;
   const config = (body?.config ?? {}) as SessionConfig;
-  const tags = body?.tags;
+
+  // Gap 4 — fold optional integration fields into tags so they're persisted
+  // without changing the DebugSession schema. Max 20 tags enforced below.
+  const extraTags: string[] = [];
+  if (body?.projectId) extraTags.push(`sentinel:project:${body.projectId}`);
+  if (body?.externalSessionId) extraTags.push(`ext:session:${body.externalSessionId}`);
+  if (body?.metadata) {
+    for (const [key, value] of Object.entries(body.metadata)) {
+      extraTags.push(`meta:${key}:${value}`);
+    }
+  }
+  const combined = [...(body?.tags ?? []), ...extraTags];
+  const tags = combined.length > 0 ? combined.slice(0, 20) : undefined;
 
   const session = await manager.createSession(name, config, tags);
   logger.info({ audit: 'session.create', sessionId: session.id, name, ip: req.ip }, 'Session created');
