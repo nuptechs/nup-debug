@@ -24,6 +24,7 @@ import { logger } from './logger.js';
 import { createStorage } from '@probe/core';
 import type { StorageConfig } from '@probe/core';
 import { instrumentStorage } from './lib/instrumented-storage.js';
+import { buildNotificationPort } from './lib/notification-factory.js';
 import {
   sessionsActive,
   wsConnectionsActive,
@@ -47,6 +48,10 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  WEBHOOK_URL: z.string().url().optional(),
+  WEBHOOK_SECRET: z.string().optional(),
+  WEBHOOK_USER_AGENT: z.string().optional(),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().int().positive().max(120_000).optional(),
 });
 
 const env = envSchema.parse(process.env);
@@ -71,6 +76,15 @@ async function main(): Promise<void> {
     storage.startPoolStatsCollection();
   }
   logger.info({ storage: storageConfig.type }, 'Storage initialized');
+
+  // ---- Notification port (webhooks) ----
+  const { notification } = buildNotificationPort({
+    url: env.WEBHOOK_URL,
+    secret: env.WEBHOOK_SECRET,
+    userAgent: env.WEBHOOK_USER_AGENT,
+    timeoutMs: env.WEBHOOK_TIMEOUT_MS,
+    logger,
+  });
 
   const app = express();
 
@@ -183,7 +197,7 @@ async function main(): Promise<void> {
   app.use(createAuthMiddleware({ apiKeys, jwtSecret, enableAuth }));
 
   // Shared session manager — backed by StoragePort
-  const sessionManager = new SessionManager(storage);
+  const sessionManager = new SessionManager(storage, notification);
 
   // Mount API routes — pass session manager via app.locals
   app.locals['sessionManager'] = sessionManager;

@@ -15,10 +15,12 @@ import type {
   EventSource,
 } from '@probe/core';
 import { generateSessionId, nowMs, DEFAULT_CORRELATION_CONFIG } from '@probe/core';
-import type { CorrelatorPort } from '@probe/core';
+import type { CorrelatorPort, NotificationPort } from '@probe/core';
 import type { StoragePort, EventFilter } from '@probe/core';
 import type { SessionListOptions } from '@probe/core';
 import { EventCorrelator } from '@probe/correlation-engine';
+import { webhookEmitsTotal } from '../lib/metrics.js';
+import { logger } from '../logger.js';
 import {
   sessionsCreatedTotal,
   sessionsDeletedTotal,
@@ -64,11 +66,31 @@ export class SessionManager {
   private readonly rebuildInProgress = new Map<string, Promise<InMemoryEntry | undefined>>();
   private purgeTimer: ReturnType<typeof setInterval> | null = null;
   private readonly storage: StoragePort;
+  private readonly notification: NotificationPort | null;
 
-  constructor(storage: StoragePort) {
+  constructor(storage: StoragePort, notification: NotificationPort | null = null) {
     this.storage = storage;
+    this.notification = notification;
     this.purgeTimer = setInterval(() => this.purgeStale(), PURGE_INTERVAL_MS);
     if (this.purgeTimer.unref) this.purgeTimer.unref();
+  }
+
+  /**
+   * Fire-and-forget webhook emission. Never throws and never blocks the caller.
+   * Failures are logged and counted but do not propagate into the domain flow.
+   */
+  private emitWebhook(event: string, payload: unknown): void {
+    const port = this.notification;
+    if (!port || !port.isConfigured()) return;
+    port
+      .notify(event, payload)
+      .then((accepted) => {
+        webhookEmitsTotal.inc({ event, result: accepted ? 'accepted' : 'rejected' });
+      })
+      .catch((err) => {
+        webhookEmitsTotal.inc({ event, result: 'error' });
+        logger.warn({ err, event }, 'webhook emission failed');
+      });
   }
 
   /** Remove sessions older than TTL that are completed or errored */
@@ -127,6 +149,13 @@ export class SessionManager {
     await this.storage.saveSession(session);
     sessionsCreatedTotal.inc();
     correlatorsCached.set(this.correlators.size);
+    this.emitWebhook('session.created', {
+      sessionId: session.id,
+      name: session.name,
+      status: session.status,
+      startedAt: session.startedAt,
+      tags: session.tags,
+    });
     return session;
   }
 
@@ -149,6 +178,12 @@ export class SessionManager {
     this.correlators.delete(id);
     sessionsDeletedTotal.inc();
     correlatorsCached.set(this.correlators.size);
+    this.emitWebhook('session.deleted', {
+      sessionId: id,
+      name: existing.name,
+      status: existing.status,
+      eventCount: existing.eventCount,
+    });
     return true;
   }
 
@@ -171,7 +206,23 @@ export class SessionManager {
     }
 
     await this.storage.updateSessionStatus(id, status, patch);
-    return this.storage.loadSession(id);
+    const updated = await this.storage.loadSession(id);
+
+    const terminal = status === 'completed' || status === 'error';
+    if (terminal) {
+      this.emitWebhook(status === 'error' ? 'session.error' : 'session.completed', {
+        sessionId: id,
+        name: existing.name,
+        fromStatus: existing.status,
+        toStatus: status,
+        startedAt: existing.startedAt,
+        endedAt: updated?.endedAt ?? null,
+        eventCount: updated?.eventCount ?? existing.eventCount,
+        ...(status === 'error' && updated?.errorMessage ? { errorMessage: updated.errorMessage } : {}),
+      });
+    }
+
+    return updated;
   }
 
   async ingestEvents(sessionId: string, events: ProbeEvent[]): Promise<number> {

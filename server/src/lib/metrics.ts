@@ -244,6 +244,22 @@ export const errorsTotal = new Counter({
   registers: [registry],
 });
 
+// ---- Webhooks ----
+
+export const webhookDeliveriesTotal = new Counter({
+  name: 'probe_webhook_deliveries_total',
+  help: 'Total webhook delivery terminal outcomes',
+  labelNames: ['type', 'status'] as const,
+  registers: [registry],
+});
+
+export const webhookEmitsTotal = new Counter({
+  name: 'probe_webhook_emits_total',
+  help: 'Total webhook notifications dispatched by domain event',
+  labelNames: ['event', 'result'] as const,
+  registers: [registry],
+});
+
 /** Reset all custom metrics (for testing) */
 export function resetMetrics(): void {
   httpRequestsTotal.reset();
@@ -278,4 +294,6 @@ export function resetMetrics(): void {
   purgeRunsTotal.reset();
   purgeDuration.reset();
   errorsTotal.reset();
+  webhookDeliveriesTotal.reset();
+  webhookEmitsTotal.reset();
 }
