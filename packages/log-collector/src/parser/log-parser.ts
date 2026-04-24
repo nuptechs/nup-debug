@@ -11,6 +11,7 @@ import {
   JSON_PREFIX,
   STACK_TRACE_LINE,
   PLAIN_LEVEL_PATTERN,
+  PLAIN_LEVEL_ANCHORED_PATTERN,
   normalizeLevel,
 } from './patterns.js';
 
@@ -175,12 +176,32 @@ function trySyslog(line: string): ParsedLine | null {
 // ---- Plain text fallback ----
 
 function parsePlainText(line: string): ParsedLine {
-  const levelMatch = PLAIN_LEVEL_PATTERN.exec(line);
+  // Prefer the anchored pattern — the level must be at the start of the line
+  // (optionally after a timestamp/bracket). Falls back to the loose pattern
+  // only to preserve older behavior for inputs that lack a recognizable prefix.
+  const anchored = PLAIN_LEVEL_ANCHORED_PATTERN.exec(line);
+  const levelMatch = anchored ?? PLAIN_LEVEL_PATTERN.exec(line);
   const level: LogLevel = levelMatch ? normalizeLevel(levelMatch[1]!) : 'info';
   return { level, message: line };
 }
 
 // ---- Stateful parser (tracks stack traces across lines) ----
+
+/**
+ * Process-wide counter for stack-trace lines that arrived with no prior
+ * log line to attach to (e.g. parser started mid-stack, or buffer flushed
+ * between trigger and stack). Consumers (e.g. the server's /metrics
+ * endpoint) can expose this as a Prometheus counter:
+ *
+ *   log_parser_orphan_stacks_total
+ */
+let _orphanStacksTotal = 0;
+export function getLogParserOrphanStacksTotal(): number {
+  return _orphanStacksTotal;
+}
+export function resetLogParserOrphanStacksTotal(): void {
+  _orphanStacksTotal = 0;
+}
 
 export class LogParser {
   private pendingEvent: ParsedLine | null = null;
@@ -201,6 +222,10 @@ export class LogParser {
         this.pendingRaw += '\n' + line;
         return;
       }
+      // Orphan stack trace line — no prior log to attach to.
+      // Increment the counter and fall through so the line is still emitted
+      // as a standalone 'error' event rather than silently lost.
+      _orphanStacksTotal++;
     }
 
     // Flush previous pending event

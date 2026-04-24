@@ -20,6 +20,8 @@ export class StdoutLogAdapter extends LogSourcePort {
   private lineBuffer = '';
   private onData: ((chunk: Buffer | string) => void) | null = null;
   private onEnd: (() => void) | null = null;
+  private onError: ((err: Error) => void) | null = null;
+  private lastError: { message: string; timestamp: number } | null = null;
 
   constructor(private readonly inputStream: Readable) {
     super();
@@ -50,8 +52,16 @@ export class StdoutLogAdapter extends LogSourcePort {
       this.connected = false;
     };
 
+    this.onError = (err: Error) => {
+      // Without this listener, a stream 'error' would crash the process.
+      this.lastError = { message: err.message, timestamp: nowMs() };
+      this.connected = false;
+      this.emitDiagnostic('error', `stdout stream error: ${err.message}`);
+    };
+
     this.stream.on('data', this.onData);
     this.stream.on('end', this.onEnd);
+    this.stream.on('error', this.onError);
     this.connected = true;
   }
 
@@ -62,11 +72,15 @@ export class StdoutLogAdapter extends LogSourcePort {
     if (this.stream && this.onEnd) {
       this.stream.removeListener('end', this.onEnd);
     }
+    if (this.stream && this.onError) {
+      this.stream.removeListener('error', this.onError);
+    }
     this.parser?.flush();
     this.parser = null;
     this.stream = null;
     this.onData = null;
     this.onEnd = null;
+    this.onError = null;
     this.lineBuffer = '';
     this.connected = false;
     this.handlers = [];
@@ -75,6 +89,10 @@ export class StdoutLogAdapter extends LogSourcePort {
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  getHealth(): { connected: boolean; lastError: { message: string; timestamp: number } | null } {
+    return { connected: this.connected, lastError: this.lastError };
   }
 
   getSourceInfo(): LogSourceInfo {
@@ -140,6 +158,24 @@ export class StdoutLogAdapter extends LogSourcePort {
 
     for (const handler of this.handlers) {
       handler(event);
+    }
+  }
+
+  private emitDiagnostic(level: LogLevel, message: string): void {
+    if (!this.config) return;
+    const event: LogEvent = {
+      id: generateId(),
+      sessionId: this.sessionId,
+      timestamp: nowMs(),
+      source: 'log',
+      level,
+      message,
+      rawLine: message,
+      logSource: this.config.source,
+      structured: { diagnostic: true, adapter: 'stdout' },
+    };
+    for (const handler of this.handlers) {
+      try { handler(event); } catch { /* handler errors must not crash adapter */ }
     }
   }
 }

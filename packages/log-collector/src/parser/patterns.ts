@@ -67,9 +67,19 @@ export const STACK_TRACE_LINE = /^(\s+at\s+|\t+at\s+|Caused by:)/;
 /** JSON detection: line starts with `{` */
 export const JSON_PREFIX = /^\s*\{/;
 
-/** Plain-text level keyword anywhere in the line */
+/** Plain-text level keyword anywhere in the line (loose — kept for API stability) */
 export const PLAIN_LEVEL_PATTERN =
   /\b(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL|SEVERE)\b/i;
+
+/**
+ * Anchored level pattern — level keyword MUST appear at the start of the line,
+ * optionally preceded by a bracketed or ISO-style timestamp. This prevents the
+ * word "ERROR" inside a free-form message from being mis-classified as the
+ * log level of that message. The parser should prefer this over
+ * PLAIN_LEVEL_PATTERN and fall back only when unanchored context is all we have.
+ */
+export const PLAIN_LEVEL_ANCHORED_PATTERN =
+  /^(?:\[[^\]]*\]\s*|<\d+>\s*|\d[\d:.TZ/ -]*\s+)?(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL|SEVERE)\b/i;
 
 export const LOG_PATTERNS = {
   SPRING_BOOT_PATTERN,

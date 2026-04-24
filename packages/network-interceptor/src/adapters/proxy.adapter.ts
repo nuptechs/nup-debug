@@ -5,6 +5,7 @@
 import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
+import { lookup } from 'node:dns/promises';
 import { URL } from 'node:url';
 import {
   NetworkCapturePort,
@@ -24,7 +25,7 @@ const MAX_PENDING_REQUESTS = 10_000;
 const MAX_ACTIVE_CONNECTIONS = 5_000;
 const PROXY_REQUEST_TIMEOUT_MS = 30_000;
 
-/** Block requests to private/internal networks — SSRF protection */
+/** Block requests to private/internal networks — SSRF protection (string-level, pre-DNS) */
 export function isPrivateHost(hostname: string): boolean {
   // IPv4 private ranges + loopback + link-local + metadata
   const blocked = [
@@ -42,6 +43,36 @@ export function isPrivateHost(hostname: string): boolean {
   const lower = hostname.toLowerCase();
   if (lower === 'localhost' || lower === '') return true;
   return blocked.some(re => re.test(lower));
+}
+
+export type ResolvedHost =
+  | { ok: true; address: string; family: 4 | 6 }
+  | { ok: false; reason: 'blocked-hostname' | 'dns-empty' | 'dns-resolves-to-private' | 'dns-error' };
+
+/**
+ * Resolve `hostname` and verify every returned IP is public.
+ * Prevents DNS rebinding: caller MUST use the returned `address` directly in
+ * the outgoing request (do not let Node re-resolve the hostname).
+ */
+export async function resolveAndVerifyPublicHost(hostname: string): Promise<ResolvedHost> {
+  if (isPrivateHost(hostname)) return { ok: false, reason: 'blocked-hostname' };
+  const ipFamily = net.isIP(hostname);
+  if (ipFamily !== 0) {
+    // Already an IP literal and passed isPrivateHost — public IP.
+    return { ok: true, address: hostname, family: ipFamily as 4 | 6 };
+  }
+  let addrs: Array<{ address: string; family: number }>;
+  try {
+    addrs = await lookup(hostname, { all: true, verbatim: true });
+  } catch {
+    return { ok: false, reason: 'dns-error' };
+  }
+  if (addrs.length === 0) return { ok: false, reason: 'dns-empty' };
+  for (const { address } of addrs) {
+    if (isPrivateHost(address)) return { ok: false, reason: 'dns-resolves-to-private' };
+  }
+  const first = addrs[0]!;
+  return { ok: true, address: first.address, family: (first.family === 6 ? 6 : 4) };
 }
 
 const CAPTURABLE_CONTENT_TYPES = new Set([
@@ -97,16 +128,19 @@ export class ProxyAdapter extends NetworkCapturePort {
       const [hostname, portStr] = (req.url ?? '').split(':');
       const targetPort = parseInt(portStr ?? '443', 10);
 
-      // SSRF protection — block CONNECT tunnels to private/internal hosts
-      if (isPrivateHost(hostname ?? '')) {
-        clientSocket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-        clientSocket.destroy();
-        return;
-      }
+      // SSRF + DNS rebinding protection — resolve hostname, check every IP,
+      // then connect to the resolved IP directly so Node cannot re-resolve to a private IP.
+      resolveAndVerifyPublicHost(hostname ?? '').then((resolved) => {
+        if (!resolved.ok) {
+          const status = resolved.reason === 'dns-error' ? '502 Bad Gateway' : '403 Forbidden';
+          clientSocket.write(`HTTP/1.1 ${status}\r\n\r\n`);
+          clientSocket.destroy();
+          return;
+        }
 
       const TUNNEL_TIMEOUT_MS = 120_000;
 
-      const serverSocket = net.connect(targetPort, hostname ?? '', () => {
+      const serverSocket = net.connect(targetPort, resolved.address, () => {
         clientSocket.write(
           'HTTP/1.1 200 Connection Established\r\n\r\n',
         );
@@ -126,6 +160,10 @@ export class ProxyAdapter extends NetworkCapturePort {
 
       clientSocket.on('error', () => {
         serverSocket.destroy();
+      });
+      }).catch(() => {
+        try { clientSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n'); } catch { /* ignore */ }
+        clientSocket.destroy();
       });
     });
 
@@ -279,49 +317,59 @@ export class ProxyAdapter extends NetworkCapturePort {
       return;
     }
 
-    // SSRF protection — block private/internal hosts
-    if (isPrivateHost(parsed.hostname)) {
-      clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
-      clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
-      this.pendingRequests.delete(requestId);
-      return;
-    }
-
-    const isHttps = parsed.protocol === 'https:';
-    const transport = isHttps ? https : http;
-
-    const proxyReq = transport.request(
-      {
-        hostname: parsed.hostname,
-        port: parsed.port || (isHttps ? 443 : 80),
-        path: parsed.pathname + parsed.search,
-        method: clientReq.method,
-        headers: clientReq.headers,
-        timeout: PROXY_REQUEST_TIMEOUT_MS,
-      },
-      (proxyRes) => {
-        this.handleProxyResponse(proxyRes, clientRes, requestId, startTime);
-      },
-    );
-
-    proxyReq.on('timeout', () => {
-      proxyReq.destroy();
-      this.pendingRequests.delete(requestId);
-      if (!clientRes.headersSent) {
-        clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
-        clientRes.end('Gateway Timeout');
+    // SSRF + DNS rebinding protection — resolve before connecting.
+    resolveAndVerifyPublicHost(parsed.hostname).then((resolved) => {
+      if (!resolved.ok) {
+        clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
+        clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
+        this.pendingRequests.delete(requestId);
+        return;
       }
-    });
 
-    proxyReq.on('error', (err) => {
+      const isHttps = parsed.protocol === 'https:';
+      const transport = isHttps ? https : http;
+
+      const proxyReq = transport.request(
+        {
+          hostname: resolved.address,
+          // Preserve SNI + Host header for HTTPS / virtual hosts
+          servername: isHttps ? parsed.hostname : undefined,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname + parsed.search,
+          method: clientReq.method,
+          headers: { ...clientReq.headers, host: parsed.host },
+          timeout: PROXY_REQUEST_TIMEOUT_MS,
+        },
+        (proxyRes) => {
+          this.handleProxyResponse(proxyRes, clientRes, requestId, startTime);
+        },
+      );
+
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        this.pendingRequests.delete(requestId);
+        if (!clientRes.headersSent) {
+          clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
+          clientRes.end('Gateway Timeout');
+        }
+      });
+
+      proxyReq.on('error', (err) => {
+        this.pendingRequests.delete(requestId);
+        if (!clientRes.headersSent) {
+          clientRes.writeHead(502, { 'Content-Type': 'text/plain' });
+          clientRes.end(`Bad Gateway: ${err.message}`);
+        }
+      });
+
+      clientReq.pipe(proxyReq);
+    }).catch(() => {
       this.pendingRequests.delete(requestId);
       if (!clientRes.headersSent) {
         clientRes.writeHead(502, { 'Content-Type': 'text/plain' });
-        clientRes.end(`Bad Gateway: ${err.message}`);
+        clientRes.end('Bad Gateway');
       }
     });
-
-    clientReq.pipe(proxyReq);
   }
 
   private handleProxyResponse(
@@ -398,47 +446,55 @@ export class ProxyAdapter extends NetworkCapturePort {
       return;
     }
 
-    // SSRF protection
-    if (isPrivateHost(parsed.hostname)) {
-      clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
-      clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
-      return;
-    }
-
-    const isHttps = parsed.protocol === 'https:';
-    const transport = isHttps ? https : http;
-
-    const proxyReq = transport.request(
-      {
-        hostname: parsed.hostname,
-        port: parsed.port || (isHttps ? 443 : 80),
-        path: parsed.pathname + parsed.search,
-        method: clientReq.method,
-        headers: clientReq.headers,
-        timeout: PROXY_REQUEST_TIMEOUT_MS,
-      },
-      (proxyRes) => {
-        clientRes.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
-        proxyRes.pipe(clientRes);
-      },
-    );
-
-    proxyReq.on('timeout', () => {
-      proxyReq.destroy();
-      if (!clientRes.headersSent) {
-        clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
-        clientRes.end('Gateway Timeout');
+    // SSRF + DNS rebinding protection — resolve before connecting.
+    resolveAndVerifyPublicHost(parsed.hostname).then((resolved) => {
+      if (!resolved.ok) {
+        clientRes.writeHead(403, { 'Content-Type': 'text/plain' });
+        clientRes.end('Forbidden: proxy to private/internal hosts is not allowed');
+        return;
       }
-    });
 
-    proxyReq.on('error', () => {
+      const isHttps = parsed.protocol === 'https:';
+      const transport = isHttps ? https : http;
+
+      const proxyReq = transport.request(
+        {
+          hostname: resolved.address,
+          servername: isHttps ? parsed.hostname : undefined,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname + parsed.search,
+          method: clientReq.method,
+          headers: { ...clientReq.headers, host: parsed.host },
+          timeout: PROXY_REQUEST_TIMEOUT_MS,
+        },
+        (proxyRes) => {
+          clientRes.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+          proxyRes.pipe(clientRes);
+        },
+      );
+
+      proxyReq.on('timeout', () => {
+        proxyReq.destroy();
+        if (!clientRes.headersSent) {
+          clientRes.writeHead(504, { 'Content-Type': 'text/plain' });
+          clientRes.end('Gateway Timeout');
+        }
+      });
+
+      proxyReq.on('error', () => {
+        if (!clientRes.headersSent) {
+          clientRes.writeHead(502, { 'Content-Type': 'text/plain' });
+          clientRes.end('Bad Gateway');
+        }
+      });
+
+      clientReq.pipe(proxyReq);
+    }).catch(() => {
       if (!clientRes.headersSent) {
         clientRes.writeHead(502, { 'Content-Type': 'text/plain' });
         clientRes.end('Bad Gateway');
       }
     });
-
-    clientReq.pipe(proxyReq);
   }
 
   private flattenHeaders(

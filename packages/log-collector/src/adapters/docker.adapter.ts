@@ -22,6 +22,7 @@ export class DockerLogAdapter extends LogSourcePort {
   private static readonly MAX_LINE_BUFFER = 1_048_576; // 1MB
   private stdoutBuffer = '';
   private stderrBuffer = '';
+  private lastError: { message: string; timestamp: number; code?: number | null } | null = null;
 
   setSessionId(id: string): void {
     this.sessionId = id;
@@ -66,14 +67,27 @@ export class DockerLogAdapter extends LogSourcePort {
       this.processStream(chunk, 'stderr');
     });
 
-    this.child.on('close', () => {
+    this.child.on('close', (code) => {
       this.stdoutParser?.flush();
       this.stderrParser?.flush();
       this.connected = false;
+      if (code !== 0 && code !== null) {
+        const msg = `docker logs exited unexpectedly (code=${code}) for container=${containerId}`;
+        this.lastError = { message: msg, timestamp: nowMs(), code };
+        this.emitDiagnostic('error', msg);
+      }
     });
 
-    this.child.on('error', () => {
+    this.child.on('error', (err) => {
       this.connected = false;
+      const msg = `docker logs spawn error: ${err.message}`;
+      this.lastError = { message: msg, timestamp: nowMs() };
+      this.emitDiagnostic('error', msg);
+    });
+
+    this.child.stderr?.on('data', () => {
+      // Already piped into stderrParser above; also keep track for health
+      // (no-op here — just prevents silent uncaught errors)
     });
 
     this.connected = true;
@@ -97,6 +111,14 @@ export class DockerLogAdapter extends LogSourcePort {
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  /**
+   * Adapter health snapshot — returns connection state + last spawn/close error.
+   * Used by consumers (server /ready, metrics) to surface collector issues.
+   */
+  getHealth(): { connected: boolean; lastError: { message: string; timestamp: number; code?: number | null } | null } {
+    return { connected: this.connected, lastError: this.lastError };
   }
 
   getSourceInfo(): LogSourceInfo {
@@ -172,6 +194,28 @@ export class DockerLogAdapter extends LogSourcePort {
 
     for (const handler of this.handlers) {
       handler(event);
+    }
+  }
+
+  /**
+   * Emit a synthetic diagnostic LogEvent (e.g., spawn error, unexpected exit).
+   * Bypasses level/pattern filters so operators always see adapter failures.
+   */
+  private emitDiagnostic(level: LogLevel, message: string): void {
+    if (!this.config) return;
+    const event: LogEvent = {
+      id: generateId(),
+      sessionId: this.sessionId,
+      timestamp: nowMs(),
+      source: 'log',
+      level,
+      message,
+      rawLine: message,
+      logSource: this.config.source,
+      structured: { diagnostic: true, adapter: 'docker' },
+    };
+    for (const handler of this.handlers) {
+      try { handler(event); } catch { /* handler errors must not crash adapter */ }
     }
   }
 
