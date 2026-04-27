@@ -1,5 +1,5 @@
 // ============================================================
-// Debug Probe — Express Demo App
+// Probe — Express Demo App
 // Demonstrates full SDK instrumentation of a sample REST API
 // ============================================================
 
@@ -9,7 +9,7 @@ import {
   SdkEventCollector,
   createLogInterceptor,
   wrapConsole,
-} from '@probe/sdk';
+} from '@nuptechs-probe/sdk';
 
 const app = express();
 app.use(express.json());

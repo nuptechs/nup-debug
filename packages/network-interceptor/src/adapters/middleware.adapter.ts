@@ -9,13 +9,13 @@ import {
   nowMs,
   redactHeaders,
   redactBody,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import type {
   NetworkConfig,
   RequestEvent,
   ResponseEvent,
   HttpMethod,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import { createTrafficFilter } from '../filters/traffic-filter.js';
 
 // Minimal Express-compatible types (avoid importing express as a dependency)

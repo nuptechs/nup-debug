@@ -1,5 +1,5 @@
 // ============================================================
-// Debug Probe — Session & Component Configuration Types
+// Probe — Session & Component Configuration Types
 // ============================================================
 
 import type { LogLevel, LogSourceInfo } from './events.js';

@@ -1,26 +1,26 @@
 # Architecture
 
-> Design decisions, data flow, and system internals for Debug Probe.
+> Design decisions, data flow, and system internals for Probe.
 
 ## System Overview
 
-Debug Probe is a universal runtime debug capture system built as a **Turborepo monorepo** with 10 TypeScript packages. It instruments applications at every layer — browser, network, server, database — and correlates events into a unified timeline.
+Probe is a universal runtime debug capture system built as a **Turborepo monorepo** with 10 TypeScript packages. It instruments applications at every layer — browser, network, server, database — and correlates events into a unified timeline.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Client / Instrumented App                       │
 │                                                                     │
-│  @probe/browser-agent   @probe/sdk   @probe/network-interceptor     │
+│  @nuptechs-probe/browser-agent   @nuptechs-probe/sdk   @nuptechs-probe/network-interceptor     │
 │  (Playwright capture)   (Node/browser)  (HTTP proxy/middleware)      │
 │         │                    │                    │                  │
 │         └────────────────────┼────────────────────┘                  │
 │                              │                                      │
 │                         EventBus                                    │
-│                         (@probe/core)                               │
+│                         (@nuptechs-probe/core)                               │
 │                              │                                      │
 │              ┌───────────────┼───────────────┐                      │
 │              ▼               ▼               ▼                      │
-│        @probe/log      @probe/correlation   @probe/reporter         │
+│        @nuptechs-probe/log      @nuptechs-probe/correlation   @nuptechs-probe/reporter         │
 │        -collector       -engine              (HTML/JSON/MD)         │
 │                              │                                      │
 │                              ▼                                      │
@@ -29,7 +29,7 @@ Debug Probe is a universal runtime debug capture system built as a **Turborepo m
 └─────────────────────────────────────┬───────────────────────────────┘
                                       │
                               ┌───────▼───────┐
-                              │ @probe/server │
+                              │ @nuptechs-probe/server │
                               │ Express + WS  │
                               │ :7070         │
                               └───────┬───────┘
@@ -44,15 +44,15 @@ Debug Probe is a universal runtime debug capture system built as a **Turborepo m
 ## Package Dependency Graph
 
 ```
-@probe/core  ← foundation (types, ports, EventBus, utils)
-  ├── @probe/sdk
-  ├── @probe/browser-agent
-  ├── @probe/log-collector
-  ├── @probe/network-interceptor
-  ├── @probe/correlation-engine
-  ├── @probe/reporter  ← also depends on @probe/correlation-engine
-  └── @probe/cli       ← depends on all packages above
-       └── @probe/server ← depends on core, correlation-engine, reporter
+@nuptechs-probe/core  ← foundation (types, ports, EventBus, utils)
+  ├── @nuptechs-probe/sdk
+  ├── @nuptechs-probe/browser-agent
+  ├── @nuptechs-probe/log-collector
+  ├── @nuptechs-probe/network-interceptor
+  ├── @nuptechs-probe/correlation-engine
+  ├── @nuptechs-probe/reporter  ← also depends on @nuptechs-probe/correlation-engine
+  └── @nuptechs-probe/cli       ← depends on all packages above
+       └── @nuptechs-probe/server ← depends on core, correlation-engine, reporter
             └── dashboard  ← depends on server API (runtime, not build)
 ```
 
@@ -66,12 +66,12 @@ Every external dependency that could be swapped is abstracted behind a **Port** 
 
 | Port | Location | Adapters | Selection |
 |------|----------|----------|-----------|
-| `StoragePort` | `@probe/core` | `MemoryStorageAdapter`, `FileStorageAdapter`, `PostgresStorageAdapter` | `STORAGE_TYPE` env var |
-| `CorrelatorPort` | `@probe/core` | `RequestIdStrategy`, `TemporalStrategy`, `UrlMatchingStrategy` | Config array |
-| `ReporterPort` | `@probe/core` | `HtmlReporterAdapter`, `JsonReporterAdapter`, `MarkdownReporterAdapter` | `?format=` query param |
-| `BrowserAgentPort` | `@probe/core` | `PlaywrightBrowserAdapter` | Only one adapter |
-| `LogSourcePort` | `@probe/core` | `FileLogAdapter`, `DockerLogAdapter`, `StdoutLogAdapter` | Config `source.type` |
-| `NetworkCapturePort` | `@probe/core` | `ProxyNetworkAdapter`, `ExpressMiddlewareAdapter` | Config `mode` |
+| `StoragePort` | `@nuptechs-probe/core` | `MemoryStorageAdapter`, `FileStorageAdapter`, `PostgresStorageAdapter` | `STORAGE_TYPE` env var |
+| `CorrelatorPort` | `@nuptechs-probe/core` | `RequestIdStrategy`, `TemporalStrategy`, `UrlMatchingStrategy` | Config array |
+| `ReporterPort` | `@nuptechs-probe/core` | `HtmlReporterAdapter`, `JsonReporterAdapter`, `MarkdownReporterAdapter` | `?format=` query param |
+| `BrowserAgentPort` | `@nuptechs-probe/core` | `PlaywrightBrowserAdapter` | Only one adapter |
+| `LogSourcePort` | `@nuptechs-probe/core` | `FileLogAdapter`, `DockerLogAdapter`, `StdoutLogAdapter` | Config `source.type` |
+| `NetworkCapturePort` | `@nuptechs-probe/core` | `ProxyNetworkAdapter`, `ExpressMiddlewareAdapter` | Config `mode` |
 
 ### Why Port/Adapter
 
@@ -109,7 +109,7 @@ Matches browser navigations/clicks to network requests by URL pattern similarity
 
 ## Server Architecture
 
-`@probe/server` is an Express application with WebSocket support:
+`@nuptechs-probe/server` is an Express application with WebSocket support:
 
 ```
 Request Flow:

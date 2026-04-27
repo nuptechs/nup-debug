@@ -7,7 +7,7 @@ import type {
   NetworkEvent,
   LogEvent,
   SdkEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 
 // ---- Helpers ----
 

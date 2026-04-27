@@ -10,13 +10,13 @@ import type {
   NavigationEvent,
   RequestEvent,
   LogEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import {
   isBrowserEvent,
   isNetworkEvent,
   isRequestEvent,
   isLogEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import { CorrelationStrategy } from './base.strategy.js';
 
 export class UrlMatchingStrategy extends CorrelationStrategy {

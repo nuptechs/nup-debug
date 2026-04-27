@@ -2,7 +2,7 @@
 // Container — Factory for report generators
 // ============================================================
 
-import { ReporterPort } from '@probe/core';
+import { ReporterPort } from '@nuptechs-probe/core';
 import { HtmlReporter } from './adapters/html.adapter.js';
 import { JsonReporter } from './adapters/json.adapter.js';
 import { MarkdownReporter } from './adapters/markdown.adapter.js';

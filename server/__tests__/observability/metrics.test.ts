@@ -16,7 +16,7 @@ import {
 import { WebSocket } from 'ws';
 import { requestLogger } from '../../src/middleware/request-logger.js';
 import { instrumentStorage } from '../../src/lib/instrumented-storage.js';
-import { MemoryStorageAdapter } from '@probe/core';
+import { MemoryStorageAdapter } from '@nuptechs-probe/core';
 import { SessionManager } from '../../src/services/session-manager.js';
 import express from 'express';
 import { sessionsRouter } from '../../src/routes/sessions.js';

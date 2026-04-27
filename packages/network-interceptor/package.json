@@ -1,8 +1,8 @@
 {
-  "name": "@probe/network-interceptor",
+  "name": "@nuptechs-probe/network-interceptor",
   "version": "0.1.0",
   "type": "module",
-  "description": "HTTP traffic capture via proxy and Express middleware for Debug Probe",
+  "description": "HTTP traffic capture via proxy and Express middleware for Probe",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,7 +18,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@probe/core": "*"
+    "@nuptechs-probe/core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

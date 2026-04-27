@@ -51,7 +51,7 @@ reportsRouter.get('/:id/report', asyncHandler(async (req: Request, res: Response
       return;
     }
 
-    const { createReporter } = await import('@probe/reporter');
+    const { createReporter } = await import('@nuptechs-probe/reporter');
     const reporter = createReporter(format as 'html' | 'json' | 'markdown');
 
     const content = await reporter.generate(

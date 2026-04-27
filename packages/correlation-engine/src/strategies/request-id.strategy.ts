@@ -9,8 +9,8 @@ import type {
   NetworkEvent,
   SdkEvent,
   LogEvent,
-} from '@probe/core';
-import { isNetworkEvent, isSdkEvent, isLogEvent } from '@probe/core';
+} from '@nuptechs-probe/core';
+import { isNetworkEvent, isSdkEvent, isLogEvent } from '@nuptechs-probe/core';
 import { CorrelationStrategy } from './base.strategy.js';
 
 export class RequestIdStrategy extends CorrelationStrategy {

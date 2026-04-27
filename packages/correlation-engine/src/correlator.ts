@@ -9,8 +9,8 @@ import type {
   CorrelationConfig,
   CorrelationStrategyType,
   Timeline,
-} from '@probe/core';
-import { CorrelatorPort, generateId, nowMs } from '@probe/core';
+} from '@nuptechs-probe/core';
+import { CorrelatorPort, generateId, nowMs } from '@nuptechs-probe/core';
 
 import { CorrelationStrategy } from './strategies/base.strategy.js';
 import { RequestIdStrategy } from './strategies/request-id.strategy.js';

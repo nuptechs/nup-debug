@@ -3,8 +3,8 @@
 // Only intercepts, never blocks original console output
 // ============================================================
 
-import type { SdkEvent } from '@probe/core';
-import { redactBody } from '@probe/core';
+import type { SdkEvent } from '@nuptechs-probe/core';
+import { redactBody } from '@nuptechs-probe/core';
 
 type ConsoleLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
 type EventHandler = (event: Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>) => void;

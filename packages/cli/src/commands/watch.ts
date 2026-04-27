@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { Command } from 'commander';
-import type { LogCollectorConfig, LogEvent, LogLevel } from '@probe/core';
+import type { LogCollectorConfig, LogEvent, LogLevel } from '@nuptechs-probe/core';
 import { formatEvent } from '../utils/output.js';
 
 interface WatchOptions {
@@ -77,7 +77,7 @@ async function runWatch(opts: WatchOptions): Promise<void> {
     process.exit(1);
   }
 
-  console.log(chalk.bold('Debug Probe — Watch Mode'));
+  console.log(chalk.bold('Probe — Watch Mode'));
   console.log(chalk.dim(`  Level filter: >= ${opts.level}`));
   if (opts.pattern) console.log(chalk.dim(`  Pattern filter: ${opts.pattern}`));
   console.log(chalk.dim('  Press Ctrl+C to stop\n'));
@@ -93,7 +93,7 @@ async function runWatch(opts: WatchOptions): Promise<void> {
   };
 
   try {
-    const { createLogSource } = await import('@probe/log-collector');
+    const { createLogSource } = await import('@nuptechs-probe/log-collector');
 
     for (const config of configs) {
       const source = createLogSource(config);

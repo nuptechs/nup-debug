@@ -1,8 +1,8 @@
 {
-  "name": "@probe/browser-agent",
+  "name": "@nuptechs-probe/browser-agent",
   "version": "0.1.0",
   "type": "module",
-  "description": "Playwright-based browser automation adapter for Debug Probe",
+  "description": "Playwright-based browser automation adapter for Probe",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -16,7 +16,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@probe/core": "*",
+    "@nuptechs-probe/core": "*",
     "playwright": "^1.48.0"
   },
   "devDependencies": {

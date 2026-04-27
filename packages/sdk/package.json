@@ -1,8 +1,8 @@
 {
-  "name": "@probe/sdk",
+  "name": "@nuptechs-probe/sdk",
   "version": "0.1.0",
   "type": "module",
-  "description": "Instrumentation SDKs for Debug Probe — Node.js and browser event capture",
+  "description": "Instrumentation SDKs for Probe — Node.js and browser event capture",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,7 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@probe/core": "*"
+    "@nuptechs-probe/core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

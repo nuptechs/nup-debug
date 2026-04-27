@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { JsonReporter } from '../../src/adapters/json.adapter.js';
-import type { ReportData, ReportOptions } from '@probe/core';
+import type { ReportData, ReportOptions } from '@nuptechs-probe/core';
 import type {
   ProbeEvent,
   RequestEvent,
@@ -10,7 +10,7 @@ import type {
   TimelineEntry,
   CorrelationGroup,
   CorrelationSummary,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 
 // ---- Helpers ----
 

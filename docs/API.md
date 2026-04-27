@@ -1,6 +1,6 @@
 # API Reference
 
-> Complete HTTP and WebSocket API specification for `@probe/server`.
+> Complete HTTP and WebSocket API specification for `@nuptechs-probe/server`.
 
 **Base URL:** `http://localhost:7070`
 

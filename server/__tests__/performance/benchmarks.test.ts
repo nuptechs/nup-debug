@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createTestContext, destroyContext, makeEvents, type TestContext } from '../integration/helpers.js';
-import type { ProbeEvent } from '@probe/core';
+import type { ProbeEvent } from '@nuptechs-probe/core';
 
 let ctx: TestContext;
 

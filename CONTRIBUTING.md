@@ -1,4 +1,4 @@
-# Contributing to Debug Probe
+# Contributing to Probe
 
 ## Prerequisites
 
@@ -11,8 +11,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/nuptechs/d2.git debug-probe
-cd debug-probe
+git clone https://github.com/nuptechs/nup-probe.git nup-probe
+cd nup-probe
 
 # Install all dependencies (workspaces resolved automatically)
 npm install
@@ -35,7 +35,7 @@ cd dashboard && npm run dev
 ## Project Structure
 
 ```
-debug-probe/
+nup-probe/
 ├── packages/
 │   ├── core/                 # Types, ports, EventBus, utilities
 │   ├── browser-agent/        # Playwright browser automation
@@ -95,10 +95,10 @@ npm run clean
 ### Adding a New Package
 
 1. Create `packages/<name>/` with `package.json`, `tsconfig.json`, and `src/`
-2. Name it `@probe/<name>` and set `"type": "module"`
+2. Name it `@nuptechs-probe/<name>` and set `"type": "module"`
 3. Add scripts: `build`, `dev`, `typecheck`, `clean`, `test`
 4. Reference `tsconfig.base.json` via `extends`
-5. Add the package as a dependency in consumers: `"@probe/<name>": "*"`
+5. Add the package as a dependency in consumers: `"@nuptechs-probe/<name>": "*"`
 6. Run `npm install` from the root to link workspaces
 
 ### Code Conventions
@@ -182,17 +182,17 @@ docker compose up db
 
 ```bash
 # Build the image
-docker build -t debug-probe .
+docker build -t nup-probe .
 
 # Run with in-memory storage
-docker run -p 7070:7070 -e PROBE_AUTH_DISABLED=1 debug-probe
+docker run -p 7070:7070 -e PROBE_AUTH_DISABLED=1 nup-probe
 
 # Run with PostgreSQL
 docker run -p 7070:7070 \
   -e DATABASE_URL=postgres://user:pass@host:5432/debug_probe \
   -e STORAGE_TYPE=postgres \
   -e PROBE_API_KEYS=your-api-key-here \
-  debug-probe
+  nup-probe
 ```
 
 ### Health Check

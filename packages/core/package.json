@@ -1,8 +1,8 @@
 {
-  "name": "@probe/core",
+  "name": "@nuptechs-probe/core",
   "version": "0.1.0",
   "type": "module",
-  "description": "Core types, ports, event bus, and utilities for Debug Probe",
+  "description": "Core types, ports, event bus, and utilities for Probe",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

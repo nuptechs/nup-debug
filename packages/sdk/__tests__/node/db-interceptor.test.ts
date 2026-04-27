@@ -10,7 +10,7 @@ import {
   normalizeQuery,
 } from '../../src/node/db-interceptor.js';
 import { SdkEventCollector } from '../../src/node/event-collector.js';
-import type { SdkConfig } from '@probe/core';
+import type { SdkConfig } from '@nuptechs-probe/core';
 
 // ── Helpers ───────────────────────────────────────────────────
 

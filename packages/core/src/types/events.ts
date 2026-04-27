@@ -1,5 +1,5 @@
 // ============================================================
-// Debug Probe — Event Type Hierarchy
+// Probe — Event Type Hierarchy
 // All event types that flow through the system
 // ============================================================
 

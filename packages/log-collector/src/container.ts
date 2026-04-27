@@ -3,8 +3,8 @@
 // Selects adapter based on config.source.type
 // ============================================================
 
-import type { LogCollectorConfig } from '@probe/core';
-import type { LogSourcePort } from '@probe/core/ports';
+import type { LogCollectorConfig } from '@nuptechs-probe/core';
+import type { LogSourcePort } from '@nuptechs-probe/core/ports';
 import { FileLogAdapter } from './adapters/file.adapter.js';
 import { DockerLogAdapter } from './adapters/docker.adapter.js';
 import { StdoutLogAdapter } from './adapters/stdout.adapter.js';

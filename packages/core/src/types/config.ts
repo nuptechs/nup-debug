@@ -1,10 +1,10 @@
 // ============================================================
-// Debug Probe — Top-Level Configuration Types
+// Probe — Top-Level Configuration Types
 // ============================================================
 
 import type { SessionConfig } from './session.js';
 
-/** Top-level configuration for a Debug Probe instance */
+/** Top-level configuration for a Probe instance */
 export interface ProbeConfig {
   projectName: string;
   outputDir: string;

@@ -1,5 +1,5 @@
 // ============================================================
-// @probe/server — Express + WebSocket server entry point
+// @nuptechs-probe/server — Express + WebSocket server entry point
 // ============================================================
 
 import { createServer } from 'node:http';
@@ -21,8 +21,8 @@ import { createRateLimiter } from './middleware/rate-limiter.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { logger } from './logger.js';
-import { createStorage, PostgresWebhookEventStore, WebhookNotificationAdapter } from '@probe/core';
-import type { StorageConfig, WebhookEventStore } from '@probe/core';
+import { createStorage, PostgresWebhookEventStore, WebhookNotificationAdapter } from '@nuptechs-probe/core';
+import type { StorageConfig, WebhookEventStore } from '@nuptechs-probe/core';
 import { instrumentStorage } from './lib/instrumented-storage.js';
 import { buildNotificationPort } from './lib/notification-factory.js';
 import {

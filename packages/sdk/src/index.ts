@@ -1,5 +1,5 @@
 // ============================================================
-// @probe/sdk — Public API
+// @nuptechs-probe/sdk — Public API
 // Re-exports both Node.js and Browser sub-modules
 // ============================================================
 

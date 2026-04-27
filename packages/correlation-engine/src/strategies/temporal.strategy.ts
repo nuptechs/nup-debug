@@ -6,8 +6,8 @@ import type {
   ProbeEvent,
   CorrelationGroup,
   CorrelationStrategyType,
-} from '@probe/core';
-import { isBrowserEvent } from '@probe/core';
+} from '@nuptechs-probe/core';
+import { isBrowserEvent } from '@nuptechs-probe/core';
 import { CorrelationStrategy } from './base.strategy.js';
 
 export class TemporalStrategy extends CorrelationStrategy {
@@ -29,7 +29,7 @@ export class TemporalStrategy extends CorrelationStrategy {
     // Browser click/navigation events act as triggers — they start groups,
     // they don't get correlated into existing ones by time alone.
     if (isBrowserEvent(event)) {
-      const be = event as import('@probe/core').BrowserEvent;
+      const be = event as import('@nuptechs-probe/core').BrowserEvent;
       if (be.type === 'click' || be.type === 'navigation') {
         return null;
       }

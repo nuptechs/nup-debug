@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { Command } from 'commander';
-import type { DebugSession, ProbeEvent } from '@probe/core';
+import type { DebugSession, ProbeEvent } from '@nuptechs-probe/core';
 import { formatEvent } from '../utils/output.js';
 
 interface ReplayOptions {
@@ -49,7 +49,7 @@ async function runReplay(sessionFile: string, opts: ReplayOptions): Promise<void
       return;
     }
 
-    console.log(chalk.bold('Debug Probe — Replay Mode'));
+    console.log(chalk.bold('Probe — Replay Mode'));
     console.log(chalk.dim(`  Session: ${saved.session.name}`));
     console.log(chalk.dim(`  Events: ${events.length}`));
     console.log(chalk.dim(`  Speed: ${speed === 0 ? 'instant' : `${speed}x`}`));

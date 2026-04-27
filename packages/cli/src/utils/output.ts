@@ -2,8 +2,8 @@
 // CLI output formatting — colored events, summaries, banner
 // ============================================================
 
-import type { ProbeEvent, DebugSession, Timeline, LogLevel, EventSource } from '@probe/core';
-import { toIso, formatDuration } from '@probe/core';
+import type { ProbeEvent, DebugSession, Timeline, LogLevel, EventSource } from '@nuptechs-probe/core';
+import { toIso, formatDuration } from '@nuptechs-probe/core';
 
 // Lazy-loaded chalk instance
 let _chalk: typeof import('chalk').default | undefined;
@@ -134,8 +134,8 @@ export function formatSummary(session: DebugSession, timeline: Timeline): string
 export function printBanner(): void {
   const chalk = _chalkSync;
   if (chalk) {
-    console.log(chalk.bold.cyan('\n  🔍 Debug Probe v0.1.0\n'));
+    console.log(chalk.bold.cyan('\n  🔍 Probe v0.1.0\n'));
   } else {
-    console.log('\n  Debug Probe v0.1.0\n');
+    console.log('\n  Probe v0.1.0\n');
   }
 }

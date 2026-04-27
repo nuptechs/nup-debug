@@ -3,8 +3,8 @@
 // Adds secondary capture without replacing original console
 // ============================================================
 
-import type { SdkEvent } from '@probe/core';
-import { redactBody } from '@probe/core';
+import type { SdkEvent } from '@nuptechs-probe/core';
+import { redactBody } from '@nuptechs-probe/core';
 import { getCurrentRequestId, getCurrentCorrelationId } from './context.js';
 import { SdkEventCollector } from './event-collector.js';
 

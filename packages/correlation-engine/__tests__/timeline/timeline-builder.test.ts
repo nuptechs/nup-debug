@@ -6,7 +6,7 @@ import type {
   ResponseEvent,
   LogEvent,
   BrowserEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 
 // ---- Helpers ----
 

@@ -4,7 +4,7 @@
 // ============================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MemoryStorageAdapter, NotificationPort } from '@probe/core';
+import { MemoryStorageAdapter, NotificationPort } from '@nuptechs-probe/core';
 import { SessionManager } from '../../src/services/session-manager.js';
 
 interface Capture {

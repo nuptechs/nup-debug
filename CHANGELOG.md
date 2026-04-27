@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Debug Probe are documented here.
+All notable changes to Probe are documented here.
 
 ## [Unreleased]
 

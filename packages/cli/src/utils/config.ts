@@ -4,8 +4,8 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { ProbeConfig } from '@probe/core';
-import { DEFAULT_PROBE_CONFIG, DEFAULT_SERVER_CONFIG, DEFAULT_STORAGE_CONFIG } from '@probe/core';
+import type { ProbeConfig } from '@nuptechs-probe/core';
+import { DEFAULT_PROBE_CONFIG, DEFAULT_SERVER_CONFIG, DEFAULT_STORAGE_CONFIG } from '@nuptechs-probe/core';
 
 export function loadConfig(configPath?: string): ProbeConfig {
   const resolvedPath = resolve(process.cwd(), configPath ?? '.proberc.json');

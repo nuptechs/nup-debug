@@ -11,7 +11,7 @@ import {
 } from '../../src/node/express-middleware.js';
 import { SdkEventCollector } from '../../src/node/event-collector.js';
 import { getCurrentContext } from '../../src/node/context.js';
-import type { SdkConfig } from '@probe/core';
+import type { SdkConfig } from '@nuptechs-probe/core';
 
 // ── Helpers ───────────────────────────────────────────────────
 

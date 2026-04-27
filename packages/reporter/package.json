@@ -1,5 +1,5 @@
 {
-  "name": "@probe/reporter",
+  "name": "@nuptechs-probe/reporter",
   "version": "0.1.0",
   "type": "module",
   "description": "Debug report generation — HTML, JSON, and Markdown formats",
@@ -16,8 +16,8 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@probe/core": "*",
-    "@probe/correlation-engine": "*"
+    "@nuptechs-probe/core": "*",
+    "@nuptechs-probe/correlation-engine": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

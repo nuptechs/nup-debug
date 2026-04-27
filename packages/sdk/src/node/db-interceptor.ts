@@ -3,8 +3,8 @@
 // Emits SdkDbQueryEvent with timing, row counts, errors
 // ============================================================
 
-import type { SdkConfig, SdkDbQueryEvent } from '@probe/core';
-import { nowMs } from '@probe/core';
+import type { SdkConfig, SdkDbQueryEvent } from '@nuptechs-probe/core';
+import { nowMs } from '@nuptechs-probe/core';
 import { getCurrentRequestId, getCurrentCorrelationId } from './context.js';
 import { SdkEventCollector } from './event-collector.js';
 

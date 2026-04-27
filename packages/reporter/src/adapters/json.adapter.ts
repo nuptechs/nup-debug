@@ -2,9 +2,9 @@
 // JSON Reporter — Structured JSON output with optional filtering
 // ============================================================
 
-import { ReporterPort, type ReportData, type ReportOptions } from '@probe/core';
-import type { ProbeEvent } from '@probe/core';
-import { isBrowserEvent, isRequestEvent, isResponseEvent } from '@probe/core';
+import { ReporterPort, type ReportData, type ReportOptions } from '@nuptechs-probe/core';
+import type { ProbeEvent } from '@nuptechs-probe/core';
+import { isBrowserEvent, isRequestEvent, isResponseEvent } from '@nuptechs-probe/core';
 
 export class JsonReporter extends ReporterPort {
   async generate(data: ReportData, options?: ReportOptions): Promise<string> {

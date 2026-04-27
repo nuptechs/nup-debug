@@ -10,8 +10,8 @@ import type {
   TimelineStats,
   EventSource,
   ResponseEvent,
-} from '@probe/core';
-import { isResponseEvent } from '@probe/core';
+} from '@nuptechs-probe/core';
+import { isResponseEvent } from '@nuptechs-probe/core';
 
 const SOURCE_DEPTH: Record<EventSource, number> = {
   browser: 0,

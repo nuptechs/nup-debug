@@ -5,7 +5,7 @@ import {
   generateId,
   generateSessionId,
   nowMs,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import type {
   BrowserConfig,
   BrowserEvent,
@@ -17,7 +17,7 @@ import type {
   NavigationEvent,
   ScreenshotEvent,
   ScreenshotTrigger,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 
 export class PlaywrightBrowserAdapter extends BrowserAgentPort {
   private browser: Browser | null = null;

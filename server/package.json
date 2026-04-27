@@ -1,5 +1,5 @@
 {
-  "name": "@probe/server",
+  "name": "@nuptechs-probe/server",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@probe/core": "*",
-    "@probe/correlation-engine": "*",
-    "@probe/reporter": "*",
+    "@nuptechs-probe/core": "*",
+    "@nuptechs-probe/correlation-engine": "*",
+    "@nuptechs-probe/reporter": "*",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "helmet": "^8.1.0",

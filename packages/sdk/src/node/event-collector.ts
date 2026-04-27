@@ -3,8 +3,8 @@
 // Buffers events until a handler is registered
 // ============================================================
 
-import type { SdkEvent } from '@probe/core';
-import { generateId, nowMs } from '@probe/core';
+import type { SdkEvent } from '@nuptechs-probe/core';
+import { generateId, nowMs } from '@nuptechs-probe/core';
 
 type PartialEvent = Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp' | 'source'> & Record<string, unknown>;
 type EventHandler = (event: SdkEvent) => void;

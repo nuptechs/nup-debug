@@ -2,9 +2,9 @@
 // InstrumentedStorage — Wraps any StoragePort with Prometheus metrics
 // ============================================================
 
-import { StoragePort } from '@probe/core';
-import type { EventFilter, SessionListOptions } from '@probe/core';
-import type { DebugSession, ProbeEvent } from '@probe/core';
+import { StoragePort } from '@nuptechs-probe/core';
+import type { EventFilter, SessionListOptions } from '@nuptechs-probe/core';
+import type { DebugSession, ProbeEvent } from '@nuptechs-probe/core';
 import {
   storageOperationDuration,
   storageOperationsTotal,

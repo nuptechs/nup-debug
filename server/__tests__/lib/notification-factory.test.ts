@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import pino from 'pino';
-import { NoopNotificationAdapter, WebhookNotificationAdapter } from '@probe/core';
+import { NoopNotificationAdapter, WebhookNotificationAdapter } from '@nuptechs-probe/core';
 import {
   buildNotificationPort,
   MIN_WEBHOOK_SECRET_LENGTH,

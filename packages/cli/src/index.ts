@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================
-// @probe/cli — Debug Probe Command-Line Interface
+// @nuptechs-probe/cli — Probe Command-Line Interface
 // ============================================================
 
 import { Command } from 'commander';
@@ -14,7 +14,7 @@ const program = new Command();
 program
   .name('probe')
   .version('0.1.0')
-  .description('Debug Probe — capture, correlate, and visualize debug sessions')
+  .description('Probe — capture, correlate, and visualize debug sessions')
   .option('--config <path>', 'path to config file', '.proberc.json')
   .option('--verbose', 'enable verbose output');
 

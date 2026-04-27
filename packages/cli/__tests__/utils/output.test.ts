@@ -201,7 +201,7 @@ describe('printBanner (no chalk)', () => {
   it('prints version info to console', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     printBanner();
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Debug Probe'));
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Probe'));
     spy.mockRestore();
   });
 });

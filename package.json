@@ -1,9 +1,9 @@
 {
-  "name": "debug-probe",
+  "name": "@nuptechs/probe",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Universal Debug Probe — Runtime capture, correlation, and analysis for any application",
+  "description": "Universal Probe — Runtime capture, correlation, and analysis for any application",
   "workspaces": [
     "packages/*",
     "server",

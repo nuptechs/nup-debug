@@ -1,5 +1,5 @@
 {
-  "name": "@probe/correlation-engine",
+  "name": "@nuptechs-probe/correlation-engine",
   "version": "0.1.0",
   "type": "module",
   "description": "Event correlation engine — groups related events and builds timelines",
@@ -16,7 +16,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@probe/core": "*"
+    "@nuptechs-probe/core": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

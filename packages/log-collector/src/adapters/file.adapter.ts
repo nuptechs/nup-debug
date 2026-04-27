@@ -5,9 +5,9 @@
 
 import { watch, createReadStream, stat } from 'node:fs';
 import type { FSWatcher, ReadStream } from 'node:fs';
-import { LogSourcePort } from '@probe/core/ports';
-import { generateId, nowMs } from '@probe/core/utils';
-import type { LogCollectorConfig, LogEvent, LogSourceInfo, LogLevel } from '@probe/core';
+import { LogSourcePort } from '@nuptechs-probe/core/ports';
+import { generateId, nowMs } from '@nuptechs-probe/core/utils';
+import type { LogCollectorConfig, LogEvent, LogSourceInfo, LogLevel } from '@nuptechs-probe/core';
 import { LogParser } from '../parser/log-parser.js';
 
 export class FileLogAdapter extends LogSourcePort {

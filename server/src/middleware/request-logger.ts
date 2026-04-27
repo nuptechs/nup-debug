@@ -9,7 +9,7 @@ import {
   parseTraceparent,
   createTraceContext,
   formatTraceparent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import {
   httpRequestsTotal,
   httpRequestDuration,

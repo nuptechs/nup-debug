@@ -2,7 +2,7 @@
 // Patterns — Named regex patterns and level mappings for log parsing
 // ============================================================
 
-import type { LogLevel } from '@probe/core';
+import type { LogLevel } from '@nuptechs-probe/core';
 
 /** Maps various level strings to normalized LogLevel */
 export const LEVEL_MAP: Readonly<Record<string, LogLevel>> = {

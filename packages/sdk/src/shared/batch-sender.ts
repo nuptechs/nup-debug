@@ -3,8 +3,8 @@
 // Uses RingBuffer (bounded) + CircuitBreaker (fail-fast)
 // ============================================================
 
-import type { ProbeEvent } from '@probe/core';
-import { RingBuffer } from '@probe/core/utils';
+import type { ProbeEvent } from '@nuptechs-probe/core';
+import { RingBuffer } from '@nuptechs-probe/core/utils';
 import { CircuitBreaker, CircuitOpenError } from './circuit-breaker.js';
 
 export interface BatchSenderConfig {

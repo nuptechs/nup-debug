@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProxyAdapter } from '../../src/adapters/proxy.adapter.js';
-import type { NetworkConfig } from '@probe/core';
+import type { NetworkConfig } from '@nuptechs-probe/core';
 
 // Use a random high port to avoid conflicts
 const TEST_PORT = 18000 + Math.floor(Math.random() * 1000);

@@ -4,7 +4,7 @@
 
 import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import type { ProbeEvent } from '@probe/core';
+import type { ProbeEvent } from '@nuptechs-probe/core';
 import type { SessionManager } from '../services/session-manager.js';
 import type { AuthConfig } from '../middleware/auth.js';
 import { verifyJwt, timingSafeKeyCheck } from '../middleware/auth.js';

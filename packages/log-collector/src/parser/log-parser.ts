@@ -3,7 +3,7 @@
 // Detects JSON, Spring Boot, Log4j, Syslog, plain text
 // ============================================================
 
-import type { LogLevel } from '@probe/core';
+import type { LogLevel } from '@nuptechs-probe/core';
 import {
   SPRING_BOOT_PATTERN,
   LOG4J_PATTERN,

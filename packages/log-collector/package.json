@@ -1,8 +1,8 @@
 {
-  "name": "@probe/log-collector",
+  "name": "@nuptechs-probe/log-collector",
   "version": "0.1.0",
   "type": "module",
-  "description": "Log collection adapters for Debug Probe — file tailing, Docker logs, stdout/stderr",
+  "description": "Log collection adapters for Probe — file tailing, Docker logs, stdout/stderr",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -19,7 +19,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@probe/core": "*"
+    "@nuptechs-probe/core": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

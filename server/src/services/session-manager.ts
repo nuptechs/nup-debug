@@ -13,12 +13,12 @@ import type {
   Timeline,
   CorrelationConfig,
   EventSource,
-} from '@probe/core';
-import { generateSessionId, nowMs, DEFAULT_CORRELATION_CONFIG } from '@probe/core';
-import type { CorrelatorPort, NotificationPort } from '@probe/core';
-import type { StoragePort, EventFilter } from '@probe/core';
-import type { SessionListOptions } from '@probe/core';
-import { EventCorrelator } from '@probe/correlation-engine';
+} from '@nuptechs-probe/core';
+import { generateSessionId, nowMs, DEFAULT_CORRELATION_CONFIG } from '@nuptechs-probe/core';
+import type { CorrelatorPort, NotificationPort } from '@nuptechs-probe/core';
+import type { StoragePort, EventFilter } from '@nuptechs-probe/core';
+import type { SessionListOptions } from '@nuptechs-probe/core';
+import { EventCorrelator } from '@nuptechs-probe/correlation-engine';
 import { webhookEmitsTotal } from '../lib/metrics.js';
 import { logger } from '../logger.js';
 import {

@@ -34,7 +34,7 @@ export default function Layout() {
         <div className="h-16 flex items-center gap-3 px-5 border-b border-probe-border">
           <Radio className="w-7 h-7 text-probe-accent" />
           <div>
-            <h1 className="text-lg font-bold tracking-tight">Debug Probe</h1>
+            <h1 className="text-lg font-bold tracking-tight">Probe</h1>
             <p className="text-[10px] text-slate-500 uppercase tracking-widest">Observability</p>
           </div>
         </div>

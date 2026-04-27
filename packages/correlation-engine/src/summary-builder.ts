@@ -11,14 +11,14 @@ import type {
   LogEvent,
   SdkDbQueryEvent,
   BrowserErrorEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import {
   isBrowserEvent,
   isRequestEvent,
   isResponseEvent,
   isLogEvent,
   isSdkEvent,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 
 export function buildGroupSummary(events: readonly ProbeEvent[]): CorrelationSummary {
   let trigger: string | undefined;

@@ -28,7 +28,7 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">Configure your Debug Probe instance</p>
+        <p className="text-sm text-slate-400 mt-1">Configure your Probe instance</p>
       </div>
 
       {/* Server status */}
@@ -95,7 +95,7 @@ export default function Settings() {
         <p className="text-xs text-slate-400">Install the SDK in your application to start sending events:</p>
         <pre className="bg-probe-bg rounded-lg p-4 text-xs font-mono text-slate-300 overflow-x-auto">
 {`// Node.js Express app
-import { createProbeMiddleware } from '@probe/sdk/node';
+import { createProbeMiddleware } from '@nuptechs-probe/sdk/node';
 
 app.use(createProbeMiddleware({
   serverUrl: '${serverUrl}',
@@ -103,7 +103,7 @@ app.use(createProbeMiddleware({
 }));
 
 // Browser app
-import { installFetchInterceptor } from '@probe/sdk/browser';
+import { installFetchInterceptor } from '@nuptechs-probe/sdk/browser';
 
 installFetchInterceptor({
   serverUrl: '${serverUrl}',

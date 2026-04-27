@@ -1,13 +1,13 @@
-# Debug Probe
+# Probe
 
-[![CI](https://github.com/nuptechs/d2/actions/workflows/ci.yml/badge.svg)](https://github.com/nuptechs/d2/actions/workflows/ci.yml)
+[![CI](https://github.com/nuptechs/nup-probe/actions/workflows/ci.yml/badge.svg)](https://github.com/nuptechs/nup-probe/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/typescript-5.7%2B-blue)](https://www.typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
 > Universal runtime debug capture, correlation, and analysis for any application stack.
 
-**Debug Probe** instruments your application at every layer — browser, network, server, database — and correlates events into a unified timeline. When a bug happens, you get a complete picture: what the user clicked, what HTTP requests fired, what the server logged, what DB queries ran, and how they all connect.
+**Probe** instruments your application at every layer — browser, network, server, database — and correlates events into a unified timeline. When a bug happens, you get a complete picture: what the user clicked, what HTTP requests fired, what the server logged, what DB queries ran, and how they all connect.
 
 ## Architecture
 
@@ -17,7 +17,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          Debug Probe                            │
+│                          Probe                            │
 │                                                                 │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
 │  │ Browser  │  │   Log    │  │ Network  │  │   SDK    │       │
@@ -47,15 +47,15 @@
 
 | Package | Purpose |
 |---------|---------|
-| `@probe/core` | Types, ports (interfaces), EventBus, utilities |
-| `@probe/browser-agent` | Playwright-based browser automation & capture |
-| `@probe/log-collector` | File tail, Docker logs, stdout/stderr adapters |
-| `@probe/network-interceptor` | HTTP proxy & Express middleware capture |
-| `@probe/correlation-engine` | Event correlation with 3 strategies + timeline |
-| `@probe/reporter` | HTML, JSON, Markdown report generation |
-| `@probe/sdk` | Instrumentation for Node.js (Express) & browsers |
-| `@probe/cli` | Command-line interface: capture, watch, report, replay |
-| `@probe/server` | Express + WebSocket API server |
+| `@nuptechs-probe/core` | Types, ports (interfaces), EventBus, utilities |
+| `@nuptechs-probe/browser-agent` | Playwright-based browser automation & capture |
+| `@nuptechs-probe/log-collector` | File tail, Docker logs, stdout/stderr adapters |
+| `@nuptechs-probe/network-interceptor` | HTTP proxy & Express middleware capture |
+| `@nuptechs-probe/correlation-engine` | Event correlation with 3 strategies + timeline |
+| `@nuptechs-probe/reporter` | HTML, JSON, Markdown report generation |
+| `@nuptechs-probe/sdk` | Instrumentation for Node.js (Express) & browsers |
+| `@nuptechs-probe/cli` | Command-line interface: capture, watch, report, replay |
+| `@nuptechs-probe/server` | Express + WebSocket API server |
 | **dashboard** | React 19 + TanStack Query + Tailwind CSS web UI |
 
 ## Features
@@ -79,8 +79,8 @@
 ### Install
 
 ```bash
-git clone <repo-url> debug-probe
-cd debug-probe
+git clone <repo-url> nup-probe
+cd nup-probe
 npm install
 npm run build
 ```
@@ -104,7 +104,7 @@ npx probe report ./debug-output/session.json --format markdown
 ### Instrument Your Node.js Server (SDK)
 
 ```typescript
-import { createProbeMiddleware } from '@probe/sdk/node';
+import { createProbeMiddleware } from '@nuptechs-probe/sdk/node';
 
 const app = express();
 
@@ -121,8 +121,8 @@ app.use(createProbeMiddleware({
 ### Instrument Your Frontend (Browser SDK)
 
 ```typescript
-import { installFetchInterceptor } from '@probe/sdk/browser';
-import { installErrorBoundary } from '@probe/sdk/browser';
+import { installFetchInterceptor } from '@nuptechs-probe/sdk/browser';
+import { installErrorBoundary } from '@nuptechs-probe/sdk/browser';
 
 // Capture all fetch requests + inject correlation headers
 const restoreFetch = installFetchInterceptor({
@@ -295,8 +295,8 @@ npm run build
 
 ```bash
 # Production build
-docker build -t debug-probe .
-docker run -p 7070:7070 -e PROBE_AUTH_DISABLED=1 debug-probe
+docker build -t nup-probe .
+docker run -p 7070:7070 -e PROBE_AUTH_DISABLED=1 nup-probe
 
 # Development with docker-compose
 docker compose --profile dev up
@@ -307,7 +307,7 @@ docker compose up probe-server
 
 ## Demo App
 
-An Express.js Todo API instrumented with Debug Probe:
+An Express.js Todo API instrumented with Probe:
 
 ```bash
 # Start the probe server first

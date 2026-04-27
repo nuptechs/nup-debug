@@ -3,13 +3,13 @@
 // Tracks active requests with timeout protection
 // ============================================================
 
-import type { SdkEvent, SdkRequestStartEvent, SdkRequestEndEvent } from '@probe/core';
+import type { SdkEvent, SdkRequestStartEvent, SdkRequestEndEvent } from '@nuptechs-probe/core';
 import {
   generateRequestId,
   generateCorrelationId,
   nowMs,
   redactHeaders,
-} from '@probe/core';
+} from '@nuptechs-probe/core';
 import { SdkEventCollector } from './event-collector.js';
 
 const REQUEST_TIMEOUT_MS = 60_000;
