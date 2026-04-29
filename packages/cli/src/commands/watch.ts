@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { Command } from 'commander';
-import type { LogCollectorConfig, LogEvent, LogLevel } from '@nuptechs-probe/core';
+import type { LogCollectorConfig, LogEvent, LogLevel } from '@nuptechs-sentinel-probe/core';
 import { formatEvent } from '../utils/output.js';
 
 interface WatchOptions {
@@ -93,7 +93,7 @@ async function runWatch(opts: WatchOptions): Promise<void> {
   };
 
   try {
-    const { createLogSource } = await import('@nuptechs-probe/log-collector');
+    const { createLogSource } = await import('@nuptechs-sentinel-probe/log-collector');
 
     for (const config of configs) {
       const source = createLogSource(config);

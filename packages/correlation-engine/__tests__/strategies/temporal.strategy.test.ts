@@ -5,7 +5,7 @@ import type {
   CorrelationGroup,
   CorrelationSummary,
   BrowserEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 // ---- Helpers ----
 

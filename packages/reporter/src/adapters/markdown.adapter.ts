@@ -2,14 +2,14 @@
 // Markdown Reporter — Human-readable Markdown debug report
 // ============================================================
 
-import { ReporterPort, type ReportData, type ReportOptions } from '@nuptechs-probe/core';
+import { ReporterPort, type ReportData, type ReportOptions } from '@nuptechs-sentinel-probe/core';
 import type {
   ProbeEvent,
   RequestEvent,
   ResponseEvent,
   LogEvent,
   BrowserErrorEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import {
   formatDuration,
   toIso,
@@ -17,7 +17,7 @@ import {
   isResponseEvent,
   isLogEvent,
   isBrowserEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 /** Escape pipe and newline characters for markdown table cells */
 function escPipe(value: unknown): string {

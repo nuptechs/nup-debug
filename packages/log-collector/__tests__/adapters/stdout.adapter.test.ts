@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PassThrough } from 'node:stream';
 import { StdoutLogAdapter } from '../../src/adapters/stdout.adapter.js';
-import type { LogCollectorConfig, LogEvent } from '@nuptechs-probe/core';
+import type { LogCollectorConfig, LogEvent } from '@nuptechs-sentinel-probe/core';
 
 function makeConfig(overrides: Partial<LogCollectorConfig> = {}): LogCollectorConfig {
   return {

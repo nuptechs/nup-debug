@@ -4,9 +4,9 @@
 // ============================================================
 
 import type { Readable } from 'node:stream';
-import { LogSourcePort } from '@nuptechs-probe/core/ports';
-import { generateId, nowMs } from '@nuptechs-probe/core/utils';
-import type { LogCollectorConfig, LogEvent, LogSourceInfo, LogLevel } from '@nuptechs-probe/core';
+import { LogSourcePort } from '@nuptechs-sentinel-probe/core/ports';
+import { generateId, nowMs } from '@nuptechs-sentinel-probe/core/utils';
+import type { LogCollectorConfig, LogEvent, LogSourceInfo, LogLevel } from '@nuptechs-sentinel-probe/core';
 import { LogParser } from '../parser/log-parser.js';
 
 export class StdoutLogAdapter extends LogSourcePort {

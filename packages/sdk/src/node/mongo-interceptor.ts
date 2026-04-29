@@ -3,8 +3,8 @@
 // Emits SdkDbQueryEvent with timing, document counts, errors
 // ============================================================
 
-import type { SdkDbQueryEvent } from '@nuptechs-probe/core';
-import { nowMs } from '@nuptechs-probe/core';
+import type { SdkDbQueryEvent } from '@nuptechs-sentinel-probe/core';
+import { nowMs } from '@nuptechs-sentinel-probe/core';
 import { getCurrentRequestId, getCurrentCorrelationId } from './context.js';
 
 export interface MongoInterceptorConfig {

@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/core",
+  "name": "@nuptechs-sentinel-probe/core",
   "version": "0.1.0",
   "type": "module",
   "description": "Core types, ports, event bus, and utilities for Probe",

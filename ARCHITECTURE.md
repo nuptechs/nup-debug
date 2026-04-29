@@ -10,17 +10,17 @@ Probe is a universal runtime debug capture system built as a **Turborepo monorep
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Client / Instrumented App                       │
 │                                                                     │
-│  @nuptechs-probe/browser-agent   @nuptechs-probe/sdk   @nuptechs-probe/network-interceptor     │
+│  @nuptechs-sentinel-probe/browser-agent   @nuptechs-sentinel-probe/sdk   @nuptechs-sentinel-probe/network-interceptor     │
 │  (Playwright capture)   (Node/browser)  (HTTP proxy/middleware)      │
 │         │                    │                    │                  │
 │         └────────────────────┼────────────────────┘                  │
 │                              │                                      │
 │                         EventBus                                    │
-│                         (@nuptechs-probe/core)                               │
+│                         (@nuptechs-sentinel-probe/core)                               │
 │                              │                                      │
 │              ┌───────────────┼───────────────┐                      │
 │              ▼               ▼               ▼                      │
-│        @nuptechs-probe/log      @nuptechs-probe/correlation   @nuptechs-probe/reporter         │
+│        @nuptechs-sentinel-probe/log      @nuptechs-sentinel-probe/correlation   @nuptechs-sentinel-probe/reporter         │
 │        -collector       -engine              (HTML/JSON/MD)         │
 │                              │                                      │
 │                              ▼                                      │
@@ -29,7 +29,7 @@ Probe is a universal runtime debug capture system built as a **Turborepo monorep
 └─────────────────────────────────────┬───────────────────────────────┘
                                       │
                               ┌───────▼───────┐
-                              │ @nuptechs-probe/server │
+                              │ @nuptechs-sentinel-probe/server │
                               │ Express + WS  │
                               │ :7070         │
                               └───────┬───────┘
@@ -44,15 +44,15 @@ Probe is a universal runtime debug capture system built as a **Turborepo monorep
 ## Package Dependency Graph
 
 ```
-@nuptechs-probe/core  ← foundation (types, ports, EventBus, utils)
-  ├── @nuptechs-probe/sdk
-  ├── @nuptechs-probe/browser-agent
-  ├── @nuptechs-probe/log-collector
-  ├── @nuptechs-probe/network-interceptor
-  ├── @nuptechs-probe/correlation-engine
-  ├── @nuptechs-probe/reporter  ← also depends on @nuptechs-probe/correlation-engine
-  └── @nuptechs-probe/cli       ← depends on all packages above
-       └── @nuptechs-probe/server ← depends on core, correlation-engine, reporter
+@nuptechs-sentinel-probe/core  ← foundation (types, ports, EventBus, utils)
+  ├── @nuptechs-sentinel-probe/sdk
+  ├── @nuptechs-sentinel-probe/browser-agent
+  ├── @nuptechs-sentinel-probe/log-collector
+  ├── @nuptechs-sentinel-probe/network-interceptor
+  ├── @nuptechs-sentinel-probe/correlation-engine
+  ├── @nuptechs-sentinel-probe/reporter  ← also depends on @nuptechs-sentinel-probe/correlation-engine
+  └── @nuptechs-sentinel-probe/cli       ← depends on all packages above
+       └── @nuptechs-sentinel-probe/server ← depends on core, correlation-engine, reporter
             └── dashboard  ← depends on server API (runtime, not build)
 ```
 
@@ -66,12 +66,12 @@ Every external dependency that could be swapped is abstracted behind a **Port** 
 
 | Port | Location | Adapters | Selection |
 |------|----------|----------|-----------|
-| `StoragePort` | `@nuptechs-probe/core` | `MemoryStorageAdapter`, `FileStorageAdapter`, `PostgresStorageAdapter` | `STORAGE_TYPE` env var |
-| `CorrelatorPort` | `@nuptechs-probe/core` | `RequestIdStrategy`, `TemporalStrategy`, `UrlMatchingStrategy` | Config array |
-| `ReporterPort` | `@nuptechs-probe/core` | `HtmlReporterAdapter`, `JsonReporterAdapter`, `MarkdownReporterAdapter` | `?format=` query param |
-| `BrowserAgentPort` | `@nuptechs-probe/core` | `PlaywrightBrowserAdapter` | Only one adapter |
-| `LogSourcePort` | `@nuptechs-probe/core` | `FileLogAdapter`, `DockerLogAdapter`, `StdoutLogAdapter` | Config `source.type` |
-| `NetworkCapturePort` | `@nuptechs-probe/core` | `ProxyNetworkAdapter`, `ExpressMiddlewareAdapter` | Config `mode` |
+| `StoragePort` | `@nuptechs-sentinel-probe/core` | `MemoryStorageAdapter`, `FileStorageAdapter`, `PostgresStorageAdapter` | `STORAGE_TYPE` env var |
+| `CorrelatorPort` | `@nuptechs-sentinel-probe/core` | `RequestIdStrategy`, `TemporalStrategy`, `UrlMatchingStrategy` | Config array |
+| `ReporterPort` | `@nuptechs-sentinel-probe/core` | `HtmlReporterAdapter`, `JsonReporterAdapter`, `MarkdownReporterAdapter` | `?format=` query param |
+| `BrowserAgentPort` | `@nuptechs-sentinel-probe/core` | `PlaywrightBrowserAdapter` | Only one adapter |
+| `LogSourcePort` | `@nuptechs-sentinel-probe/core` | `FileLogAdapter`, `DockerLogAdapter`, `StdoutLogAdapter` | Config `source.type` |
+| `NetworkCapturePort` | `@nuptechs-sentinel-probe/core` | `ProxyNetworkAdapter`, `ExpressMiddlewareAdapter` | Config `mode` |
 
 ### Why Port/Adapter
 
@@ -109,7 +109,7 @@ Matches browser navigations/clicks to network requests by URL pattern similarity
 
 ## Server Architecture
 
-`@nuptechs-probe/server` is an Express application with WebSocket support:
+`@nuptechs-sentinel-probe/server` is an Express application with WebSocket support:
 
 ```
 Request Flow:

@@ -283,7 +283,7 @@ describe('wrapConsole — redactBody', () => {
   });
 
   it('redactBody is applied to messages', () => {
-    // redactBody from @nuptechs-probe/core should redact sensitive patterns
+    // redactBody from @nuptechs-sentinel-probe/core should redact sensitive patterns
     // The exact redaction depends on the core implementation,
     // but we verify the function is called by checking the message is processed
     console.log('normal message');

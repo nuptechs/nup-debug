@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/browser-agent",
+  "name": "@nuptechs-sentinel-probe/browser-agent",
   "version": "0.1.0",
   "type": "module",
   "description": "Playwright-based browser automation adapter for Probe",
@@ -16,7 +16,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@nuptechs-probe/core": "*",
+    "@nuptechs-sentinel-probe/core": "*",
     "playwright": "^1.48.0"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BatchSender } from '../../src/shared/batch-sender.js';
-import type { ProbeEvent } from '@nuptechs-probe/core';
-import { generateId, nowMs } from '@nuptechs-probe/core';
+import type { ProbeEvent } from '@nuptechs-sentinel-probe/core';
+import { generateId, nowMs } from '@nuptechs-sentinel-probe/core';
 
 function makeEvent(overrides: Partial<ProbeEvent> = {}): ProbeEvent {
   return {

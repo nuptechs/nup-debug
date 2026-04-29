@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/network-interceptor — Public API
+// @nuptechs-sentinel-probe/network-interceptor — Public API
 // ============================================================
 
 export { ProxyAdapter } from './adapters/proxy.adapter.js';

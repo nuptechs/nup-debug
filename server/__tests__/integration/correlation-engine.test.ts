@@ -14,7 +14,7 @@ import {
   makeNetworkPair,
   type TestContext,
 } from './helpers.js';
-import type { EventSource, ProbeEvent } from '@nuptechs-probe/core';
+import type { EventSource, ProbeEvent } from '@nuptechs-sentinel-probe/core';
 
 describe('Integration: Correlation Engine via Server API', () => {
   let ctx: TestContext;

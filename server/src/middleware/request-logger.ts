@@ -9,7 +9,7 @@ import {
   parseTraceparent,
   createTraceContext,
   formatTraceparent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import {
   httpRequestsTotal,
   httpRequestDuration,

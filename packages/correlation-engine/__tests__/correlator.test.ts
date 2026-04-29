@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventCorrelator } from '../src/correlator.js';
-import type { ProbeEvent, CorrelationConfig, CorrelationGroup } from '@nuptechs-probe/core';
-import { generateId, nowMs } from '@nuptechs-probe/core';
+import type { ProbeEvent, CorrelationConfig, CorrelationGroup } from '@nuptechs-sentinel-probe/core';
+import { generateId, nowMs } from '@nuptechs-sentinel-probe/core';
 
 function makeEvent(overrides: Partial<ProbeEvent> = {}): ProbeEvent {
   return {

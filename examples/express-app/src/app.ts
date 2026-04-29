@@ -9,7 +9,7 @@ import {
   SdkEventCollector,
   createLogInterceptor,
   wrapConsole,
-} from '@nuptechs-probe/sdk';
+} from '@nuptechs-sentinel-probe/sdk';
 
 const app = express();
 app.use(express.json());

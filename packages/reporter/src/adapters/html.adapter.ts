@@ -2,7 +2,7 @@
 // HTML Reporter — Self-contained HTML debug report
 // ============================================================
 
-import { ReporterPort, type ReportData, type ReportOptions } from '@nuptechs-probe/core';
+import { ReporterPort, type ReportData, type ReportOptions } from '@nuptechs-sentinel-probe/core';
 import type {
   ProbeEvent,
   RequestEvent,
@@ -10,7 +10,7 @@ import type {
   LogEvent,
   BrowserErrorEvent,
   ScreenshotEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import {
   formatDuration,
   toIso,
@@ -19,7 +19,7 @@ import {
   isLogEvent,
   isBrowserEvent,
   isScreenshotEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 export class HtmlReporter extends ReporterPort {
   async generate(data: ReportData, options?: ReportOptions): Promise<string> {

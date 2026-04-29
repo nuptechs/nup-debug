@@ -4,8 +4,8 @@
 
 import express from 'express';
 import { createServer, type Server } from 'node:http';
-import { MemoryStorageAdapter } from '@nuptechs-probe/core';
-import type { ProbeEvent, EventSource, DebugSession } from '@nuptechs-probe/core';
+import { MemoryStorageAdapter } from '@nuptechs-sentinel-probe/core';
+import type { ProbeEvent, EventSource, DebugSession } from '@nuptechs-sentinel-probe/core';
 import { sessionsRouter } from '../../src/routes/sessions.js';
 import { eventsRouter } from '../../src/routes/events.js';
 import { reportsRouter } from '../../src/routes/reports.js';

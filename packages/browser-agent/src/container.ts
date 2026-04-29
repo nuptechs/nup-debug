@@ -1,4 +1,4 @@
-import type { BrowserAgentPort } from '@nuptechs-probe/core';
+import type { BrowserAgentPort } from '@nuptechs-sentinel-probe/core';
 import { PlaywrightBrowserAdapter } from './adapters/playwright.adapter.js';
 
 let _agent: BrowserAgentPort | null = null;

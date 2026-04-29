@@ -3,7 +3,7 @@
 // ============================================================
 
 import type { Command } from 'commander';
-import type { DebugSession, ProbeEvent } from '@nuptechs-probe/core';
+import type { DebugSession, ProbeEvent } from '@nuptechs-sentinel-probe/core';
 import { formatEvent } from '../utils/output.js';
 
 interface ReplayOptions {

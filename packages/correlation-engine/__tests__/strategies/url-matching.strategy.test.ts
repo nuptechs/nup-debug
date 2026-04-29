@@ -8,7 +8,7 @@ import type {
   NavigationEvent,
   BrowserEvent,
   LogEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 // ---- Helpers ----
 

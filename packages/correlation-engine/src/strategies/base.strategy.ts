@@ -2,7 +2,7 @@
 // CorrelationStrategy — Abstract base for correlation strategies
 // ============================================================
 
-import type { ProbeEvent, CorrelationGroup, CorrelationStrategyType } from '@nuptechs-probe/core';
+import type { ProbeEvent, CorrelationGroup, CorrelationStrategyType } from '@nuptechs-sentinel-probe/core';
 
 export abstract class CorrelationStrategy {
   abstract tryCorrelate(

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createTrafficFilter } from '../../src/filters/traffic-filter.js';
-import type { NetworkConfig } from '@nuptechs-probe/core';
+import type { NetworkConfig } from '@nuptechs-sentinel-probe/core';
 
 function makeConfig(partial: Partial<NetworkConfig> = {}): NetworkConfig {
   return {

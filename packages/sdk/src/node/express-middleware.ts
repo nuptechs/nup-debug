@@ -3,13 +3,13 @@
 // Works WITHOUT Express installed (uses compatible signatures)
 // ============================================================
 
-import type { SdkConfig, SdkRequestStartEvent, SdkRequestEndEvent } from '@nuptechs-probe/core';
+import type { SdkConfig, SdkRequestStartEvent, SdkRequestEndEvent } from '@nuptechs-sentinel-probe/core';
 import {
   generateRequestId,
   generateCorrelationId,
   nowMs,
   redactHeaders,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import type { ProbeContext } from './context.js';
 import { runWithContext } from './context.js';
 import { SdkEventCollector } from './event-collector.js';

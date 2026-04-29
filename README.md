@@ -1,6 +1,6 @@
-# Probe
+# NuP Sentinel Probe
 
-[![CI](https://github.com/nuptechs/nup-probe/actions/workflows/ci.yml/badge.svg)](https://github.com/nuptechs/nup-probe/actions/workflows/ci.yml)
+[![CI](https://github.com/nuptechs/nup-sentinel-probe/actions/workflows/ci.yml/badge.svg)](https://github.com/nuptechs/nup-sentinel-probe/actions/workflows/ci.yml)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/typescript-5.7%2B-blue)](https://www.typescriptlang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
@@ -47,15 +47,15 @@
 
 | Package | Purpose |
 |---------|---------|
-| `@nuptechs-probe/core` | Types, ports (interfaces), EventBus, utilities |
-| `@nuptechs-probe/browser-agent` | Playwright-based browser automation & capture |
-| `@nuptechs-probe/log-collector` | File tail, Docker logs, stdout/stderr adapters |
-| `@nuptechs-probe/network-interceptor` | HTTP proxy & Express middleware capture |
-| `@nuptechs-probe/correlation-engine` | Event correlation with 3 strategies + timeline |
-| `@nuptechs-probe/reporter` | HTML, JSON, Markdown report generation |
-| `@nuptechs-probe/sdk` | Instrumentation for Node.js (Express) & browsers |
-| `@nuptechs-probe/cli` | Command-line interface: capture, watch, report, replay |
-| `@nuptechs-probe/server` | Express + WebSocket API server |
+| `@nuptechs-sentinel-probe/core` | Types, ports (interfaces), EventBus, utilities |
+| `@nuptechs-sentinel-probe/browser-agent` | Playwright-based browser automation & capture |
+| `@nuptechs-sentinel-probe/log-collector` | File tail, Docker logs, stdout/stderr adapters |
+| `@nuptechs-sentinel-probe/network-interceptor` | HTTP proxy & Express middleware capture |
+| `@nuptechs-sentinel-probe/correlation-engine` | Event correlation with 3 strategies + timeline |
+| `@nuptechs-sentinel-probe/reporter` | HTML, JSON, Markdown report generation |
+| `@nuptechs-sentinel-probe/sdk` | Instrumentation for Node.js (Express) & browsers |
+| `@nuptechs-sentinel-probe/cli` | Command-line interface: capture, watch, report, replay |
+| `@nuptechs-sentinel-probe/server` | Express + WebSocket API server |
 | **dashboard** | React 19 + TanStack Query + Tailwind CSS web UI |
 
 ## Features
@@ -104,7 +104,7 @@ npx probe report ./debug-output/session.json --format markdown
 ### Instrument Your Node.js Server (SDK)
 
 ```typescript
-import { createProbeMiddleware } from '@nuptechs-probe/sdk/node';
+import { createProbeMiddleware } from '@nuptechs-sentinel-probe/sdk/node';
 
 const app = express();
 
@@ -121,8 +121,8 @@ app.use(createProbeMiddleware({
 ### Instrument Your Frontend (Browser SDK)
 
 ```typescript
-import { installFetchInterceptor } from '@nuptechs-probe/sdk/browser';
-import { installErrorBoundary } from '@nuptechs-probe/sdk/browser';
+import { installFetchInterceptor } from '@nuptechs-sentinel-probe/sdk/browser';
+import { installErrorBoundary } from '@nuptechs-sentinel-probe/sdk/browser';
 
 // Capture all fetch requests + inject correlation headers
 const restoreFetch = installFetchInterceptor({

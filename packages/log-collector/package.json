@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/log-collector",
+  "name": "@nuptechs-sentinel-probe/log-collector",
   "version": "0.1.0",
   "type": "module",
   "description": "Log collection adapters for Probe — file tailing, Docker logs, stdout/stderr",
@@ -19,7 +19,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@nuptechs-probe/core": "*"
+    "@nuptechs-sentinel-probe/core": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

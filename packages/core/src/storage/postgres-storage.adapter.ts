@@ -11,7 +11,7 @@ import type { PoolStats } from '../ports/storage.port.js';
 type Pool = import('pg').Pool;
 type PoolConfig = import('pg').PoolConfig;
 
-// ---- Circuit Breaker (inlined to avoid cross-package dep on @nuptechs-probe/sdk) ----
+// ---- Circuit Breaker (inlined to avoid cross-package dep on @nuptechs-sentinel-probe/sdk) ----
 
 interface CBConfig {
   failureThreshold: number;

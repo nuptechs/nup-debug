@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/reporter — Public API
+// @nuptechs-sentinel-probe/reporter — Public API
 // ============================================================
 
 export { HtmlReporter } from './adapters/html.adapter.js';

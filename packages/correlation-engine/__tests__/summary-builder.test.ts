@@ -8,7 +8,7 @@ import type {
   ResponseEvent,
   LogEvent,
   SdkDbQueryEvent,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 // ---- Helpers ----
 

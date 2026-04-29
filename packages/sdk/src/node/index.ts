@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/sdk/node — Node.js Instrumentation
+// @nuptechs-sentinel-probe/sdk/node — Node.js Instrumentation
 // ============================================================
 
 export { createProbeMiddleware, getProbeContext } from './express-middleware.js';
