@@ -4,7 +4,7 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { ProbeEvent } from '@nuptechs-probe/core';
+import type { ProbeEvent } from '@nuptechs-sentinel-probe/core';
 import { z } from 'zod';
 import type { SessionManager } from '../services/session-manager.js';
 import { asyncHandler } from '../middleware/async-handler.js';

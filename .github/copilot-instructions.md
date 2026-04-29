@@ -67,7 +67,7 @@ Three strategies run in parallel:
 - **Zod at boundaries** — validate all HTTP/WebSocket/CLI input
 - **Structured logging** — Pino JSON, never `console.log`
 - **Immutable events** — `ProbeEvent` properties are `readonly`
-- **Port/Adapter** — external deps behind abstract ports in `@nuptechs-probe/core`
+- **Port/Adapter** — external deps behind abstract ports in `@nuptechs-sentinel-probe/core`
 
 ## Build & Test
 

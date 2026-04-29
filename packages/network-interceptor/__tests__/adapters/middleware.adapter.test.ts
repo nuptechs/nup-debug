@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { MiddlewareAdapter } from '../../src/adapters/middleware.adapter.js';
-import type { NetworkConfig } from '@nuptechs-probe/core';
+import type { NetworkConfig } from '@nuptechs-sentinel-probe/core';
 
 function createMockReq(opts: {
   method?: string;

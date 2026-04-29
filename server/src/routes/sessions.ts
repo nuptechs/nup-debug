@@ -4,8 +4,8 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import type { SessionConfig } from '@nuptechs-probe/core';
-import { generateSessionId } from '@nuptechs-probe/core';
+import type { SessionConfig } from '@nuptechs-sentinel-probe/core';
+import { generateSessionId } from '@nuptechs-sentinel-probe/core';
 import { z } from 'zod';
 import type { SessionManager } from '../services/session-manager.js';
 import { asyncHandler } from '../middleware/async-handler.js';

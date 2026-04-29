@@ -11,7 +11,7 @@ import type {
   NetworkConfig,
   DebugSession,
   CorrelationGroup,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import {
   DEFAULT_BROWSER_CONFIG,
   DEFAULT_NETWORK_CONFIG,
@@ -19,7 +19,7 @@ import {
   DEFAULT_CAPTURE_CONFIG,
   generateSessionId,
   nowMs,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import { loadConfig } from '../utils/config.js';
 import { printBanner, formatSummary } from '../utils/output.js';
 
@@ -116,7 +116,7 @@ async function runCapture(url: string | undefined, opts: CaptureOptions): Promis
     if (sessionConfig.browser?.enabled !== false && opts.browser) {
       spinner.text = 'Launching browser agent...';
       // Lazy-load browser agent to keep CLI startup fast
-      const { getBrowserAgent } = await import('@nuptechs-probe/browser-agent');
+      const { getBrowserAgent } = await import('@nuptechs-sentinel-probe/browser-agent');
       const agent = getBrowserAgent();
       await agent.launch(sessionConfig.browser as BrowserConfig);
       agent.onEvent((event) => collectedEvents.push(event));
@@ -127,7 +127,7 @@ async function runCapture(url: string | undefined, opts: CaptureOptions): Promis
     const logDisposers: Array<() => Promise<void>> = [];
     if (sessionConfig.logs && sessionConfig.logs.length > 0) {
       spinner.text = 'Connecting log sources...';
-      const { createLogSource } = await import('@nuptechs-probe/log-collector');
+      const { createLogSource } = await import('@nuptechs-sentinel-probe/log-collector');
       for (const logConfig of sessionConfig.logs) {
         const source = createLogSource(logConfig);
         source.onLog((event: ProbeEvent) => collectedEvents.push(event));
@@ -140,7 +140,7 @@ async function runCapture(url: string | undefined, opts: CaptureOptions): Promis
     let networkCapture: { stop: () => Promise<void> } | undefined;
     if (sessionConfig.network?.enabled !== false) {
       spinner.text = 'Starting network interceptor...';
-      const { createNetworkCapture } = await import('@nuptechs-probe/network-interceptor');
+      const { createNetworkCapture } = await import('@nuptechs-sentinel-probe/network-interceptor');
       const netCapture = createNetworkCapture(sessionConfig.network as NetworkConfig);
       await netCapture.start(sessionConfig.network as NetworkConfig);
       netCapture.onRequest((event) => collectedEvents.push(event));
@@ -150,7 +150,7 @@ async function runCapture(url: string | undefined, opts: CaptureOptions): Promis
 
     // Correlation engine
     spinner.text = 'Initializing correlation engine...';
-    const { createCorrelator } = await import('@nuptechs-probe/correlation-engine');
+    const { createCorrelator } = await import('@nuptechs-sentinel-probe/correlation-engine');
     const correlator = createCorrelator(sessionConfig.correlation ?? DEFAULT_CORRELATION_CONFIG);
 
     spinner.text = chalk.green(`Capturing... (${opts.timeout}s timeout, Ctrl+C to stop)`);
@@ -179,7 +179,7 @@ async function runCapture(url: string | undefined, opts: CaptureOptions): Promis
 
       // Generate report
       spinner!.text = 'Generating report...';
-      const { createReporter } = await import('@nuptechs-probe/reporter');
+      const { createReporter } = await import('@nuptechs-sentinel-probe/reporter');
       const reporter = createReporter(opts.format as 'html' | 'json' | 'markdown');
 
       session.endedAt = nowMs();

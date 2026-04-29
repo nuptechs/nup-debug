@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/correlation-engine — Public API
+// @nuptechs-sentinel-probe/correlation-engine — Public API
 // ============================================================
 
 export { EventCorrelator } from './correlator.js';

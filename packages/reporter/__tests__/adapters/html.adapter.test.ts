@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { HtmlReporter } from '../../src/adapters/html.adapter.js';
-import type { ReportData, ReportOptions } from '@nuptechs-probe/core';
+import type { ReportData, ReportOptions } from '@nuptechs-sentinel-probe/core';
 import type {
   ProbeEvent,
   RequestEvent,
@@ -11,7 +11,7 @@ import type {
   CorrelationGroup,
   CorrelationSummary,
   TimelineEntry,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 
 // ---- Helpers ----
 

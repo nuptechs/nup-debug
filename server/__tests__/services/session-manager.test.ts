@@ -3,9 +3,9 @@
 // ============================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MemoryStorageAdapter } from '@nuptechs-probe/core';
+import { MemoryStorageAdapter } from '@nuptechs-sentinel-probe/core';
 import { SessionManager } from '../../src/services/session-manager.js';
-import type { ProbeEvent, EventSource } from '@nuptechs-probe/core';
+import type { ProbeEvent, EventSource } from '@nuptechs-sentinel-probe/core';
 
 function makeEvent(sessionId: string, source: EventSource = 'browser', timestamp = Date.now()): ProbeEvent {
   return {

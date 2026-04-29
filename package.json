@@ -1,9 +1,9 @@
 {
-  "name": "@nuptechs/probe",
+  "name": "@nuptechs/sentinel-probe",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Universal Probe — Runtime capture, correlation, and analysis for any application",
+  "description": "NuP Sentinel Probe — runtime capture module of the NuP Sentinel platform.",
   "workspaces": [
     "packages/*",
     "server",

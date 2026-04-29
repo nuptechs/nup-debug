@@ -11,7 +11,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/nuptechs/nup-probe.git nup-probe
+git clone https://github.com/nuptechs/nup-sentinel-probe.git nup-probe
 cd nup-probe
 
 # Install all dependencies (workspaces resolved automatically)
@@ -95,10 +95,10 @@ npm run clean
 ### Adding a New Package
 
 1. Create `packages/<name>/` with `package.json`, `tsconfig.json`, and `src/`
-2. Name it `@nuptechs-probe/<name>` and set `"type": "module"`
+2. Name it `@nuptechs-sentinel-probe/<name>` and set `"type": "module"`
 3. Add scripts: `build`, `dev`, `typecheck`, `clean`, `test`
 4. Reference `tsconfig.base.json` via `extends`
-5. Add the package as a dependency in consumers: `"@nuptechs-probe/<name>": "*"`
+5. Add the package as a dependency in consumers: `"@nuptechs-sentinel-probe/<name>": "*"`
 6. Run `npm install` from the root to link workspaces
 
 ### Code Conventions

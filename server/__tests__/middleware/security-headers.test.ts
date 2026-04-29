@@ -6,7 +6,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import express from 'express';
 import helmet from 'helmet';
 import request from 'supertest';
-import { MemoryStorageAdapter } from '@nuptechs-probe/core';
+import { MemoryStorageAdapter } from '@nuptechs-sentinel-probe/core';
 import { sessionsRouter } from '../../src/routes/sessions.js';
 import { SessionManager } from '../../src/services/session-manager.js';
 import { errorHandler, notFoundHandler } from '../../src/middleware/error-handler.js';

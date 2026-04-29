@@ -4,8 +4,8 @@
 // ============================================================
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MemoryStorageAdapter } from '@nuptechs-probe/core';
-import type { DebugSession, ProbeEvent, EventSource } from '@nuptechs-probe/core';
+import { MemoryStorageAdapter } from '@nuptechs-sentinel-probe/core';
+import type { DebugSession, ProbeEvent, EventSource } from '@nuptechs-sentinel-probe/core';
 
 function makeSession(id: string, overrides: Partial<DebugSession> = {}): DebugSession {
   return {

@@ -2,7 +2,7 @@
 // Traffic Filter — URL inclusion/exclusion and extension filtering
 // ============================================================
 
-import type { NetworkConfig } from '@nuptechs-probe/core';
+import type { NetworkConfig } from '@nuptechs-sentinel-probe/core';
 
 interface CompiledFilter {
   includePatterns: RegExp[];

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================
-// @nuptechs-probe/cli — Probe Command-Line Interface
+// @nuptechs-sentinel-probe/cli — Probe Command-Line Interface
 // ============================================================
 
 import { Command } from 'commander';

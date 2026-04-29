@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/example-express",
+  "name": "@nuptechs-sentinel-probe/example-express",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "dev": "tsx watch src/app.ts"
   },
   "dependencies": {
-    "@nuptechs-probe/sdk": "*",
+    "@nuptechs-sentinel-probe/sdk": "*",
     "express": "^4.21.0"
   },
   "devDependencies": {

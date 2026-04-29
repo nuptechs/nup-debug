@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/sdk",
+  "name": "@nuptechs-sentinel-probe/sdk",
   "version": "0.1.0",
   "type": "module",
   "description": "Instrumentation SDKs for Probe — Node.js and browser event capture",
@@ -18,7 +18,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nuptechs-probe/core": "*"
+    "@nuptechs-sentinel-probe/core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

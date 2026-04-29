@@ -14,8 +14,8 @@ import {
   nowMs,
   redactHeaders,
   redactBody,
-} from '@nuptechs-probe/core';
-import type { NetworkConfig, RequestEvent, ResponseEvent, HttpMethod } from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
+import type { NetworkConfig, RequestEvent, ResponseEvent, HttpMethod } from '@nuptechs-sentinel-probe/core';
 import { createTrafficFilter } from '../filters/traffic-filter.js';
 
 const DEFAULT_PROXY_PORT = 8080;

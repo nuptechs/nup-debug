@@ -4,9 +4,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InstrumentedStorage, instrumentStorage } from '../../src/lib/instrumented-storage.js';
-import { StoragePort } from '@nuptechs-probe/core';
-import type { DebugSession, ProbeEvent } from '@nuptechs-probe/core';
-import type { EventFilter, PoolStats } from '@nuptechs-probe/core';
+import { StoragePort } from '@nuptechs-sentinel-probe/core';
+import type { DebugSession, ProbeEvent } from '@nuptechs-sentinel-probe/core';
+import type { EventFilter, PoolStats } from '@nuptechs-sentinel-probe/core';
 import {
   resetMetrics,
   pgPoolTotalConnections,

@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/network-interceptor",
+  "name": "@nuptechs-sentinel-probe/network-interceptor",
   "version": "0.1.0",
   "type": "module",
   "description": "HTTP traffic capture via proxy and Express middleware for Probe",
@@ -18,7 +18,7 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "@nuptechs-probe/core": "*"
+    "@nuptechs-sentinel-probe/core": "*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

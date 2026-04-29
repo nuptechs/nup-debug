@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/log-collector — Public API
+// @nuptechs-sentinel-probe/log-collector — Public API
 // ============================================================
 
 // Adapters

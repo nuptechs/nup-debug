@@ -10,7 +10,7 @@ import {
   InMemoryWebhookEventStore,
   type WebhookEventStore,
   isInternalUrl,
-} from '@nuptechs-probe/core';
+} from '@nuptechs-sentinel-probe/core';
 import type { Logger } from 'pino';
 import { webhookDeliveriesTotal } from './metrics.js';
 

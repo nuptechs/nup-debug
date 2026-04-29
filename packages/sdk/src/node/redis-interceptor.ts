@@ -3,8 +3,8 @@
 // Emits SdkCacheEvent with timing, command info, errors
 // ============================================================
 
-import type { SdkCacheEvent } from '@nuptechs-probe/core';
-import { nowMs } from '@nuptechs-probe/core';
+import type { SdkCacheEvent } from '@nuptechs-sentinel-probe/core';
+import { nowMs } from '@nuptechs-sentinel-probe/core';
 import { getCurrentRequestId, getCurrentCorrelationId } from './context.js';
 
 export interface RedisInterceptorConfig {

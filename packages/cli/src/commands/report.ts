@@ -3,8 +3,8 @@
 // ============================================================
 
 import type { Command } from 'commander';
-import type { DebugSession, ProbeEvent, CorrelationGroup } from '@nuptechs-probe/core';
-import { DEFAULT_CORRELATION_CONFIG } from '@nuptechs-probe/core';
+import type { DebugSession, ProbeEvent, CorrelationGroup } from '@nuptechs-sentinel-probe/core';
+import { DEFAULT_CORRELATION_CONFIG } from '@nuptechs-sentinel-probe/core';
 
 interface ReportOptions {
   format: string;
@@ -45,7 +45,7 @@ async function runReport(sessionFile: string, opts: ReportOptions): Promise<void
 
     spinner.text = 'Correlating events...';
 
-    const { createCorrelator } = await import('@nuptechs-probe/correlation-engine');
+    const { createCorrelator } = await import('@nuptechs-sentinel-probe/correlation-engine');
     const correlator = createCorrelator(
       saved.session.config.correlation ?? DEFAULT_CORRELATION_CONFIG,
     );
@@ -59,7 +59,7 @@ async function runReport(sessionFile: string, opts: ReportOptions): Promise<void
 
     spinner.text = 'Generating report...';
 
-    const { createReporter } = await import('@nuptechs-probe/reporter');
+    const { createReporter } = await import('@nuptechs-sentinel-probe/reporter');
     const reporter = createReporter(opts.format as 'html' | 'json' | 'markdown');
 
     const reportContent = await reporter.generate(

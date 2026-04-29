@@ -3,7 +3,7 @@
 // Injects correlation headers and emits request events
 // ============================================================
 
-import type { SdkEvent } from '@nuptechs-probe/core';
+import type { SdkEvent } from '@nuptechs-sentinel-probe/core';
 
 type EventHandler = (event: Omit<SdkEvent, 'id' | 'sessionId' | 'timestamp'>) => void;
 

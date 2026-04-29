@@ -1,5 +1,5 @@
 {
-  "name": "@nuptechs-probe/server",
+  "name": "@nuptechs-sentinel-probe/server",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nuptechs-probe/core": "*",
-    "@nuptechs-probe/correlation-engine": "*",
-    "@nuptechs-probe/reporter": "*",
+    "@nuptechs-sentinel-probe/core": "*",
+    "@nuptechs-sentinel-probe/correlation-engine": "*",
+    "@nuptechs-sentinel-probe/reporter": "*",
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "helmet": "^8.1.0",

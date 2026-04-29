@@ -2,8 +2,8 @@
 // CLI output formatting — colored events, summaries, banner
 // ============================================================
 
-import type { ProbeEvent, DebugSession, Timeline, LogLevel, EventSource } from '@nuptechs-probe/core';
-import { toIso, formatDuration } from '@nuptechs-probe/core';
+import type { ProbeEvent, DebugSession, Timeline, LogLevel, EventSource } from '@nuptechs-sentinel-probe/core';
+import { toIso, formatDuration } from '@nuptechs-sentinel-probe/core';
 
 // Lazy-loaded chalk instance
 let _chalk: typeof import('chalk').default | undefined;

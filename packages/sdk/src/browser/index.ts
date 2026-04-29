@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/sdk/browser — Browser Instrumentation
+// @nuptechs-sentinel-probe/sdk/browser — Browser Instrumentation
 // ============================================================
 
 export { installFetchInterceptor } from './fetch-interceptor.js';

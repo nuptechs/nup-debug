@@ -1,5 +1,5 @@
 // ============================================================
-// @nuptechs-probe/core — Notification module (webhook delivery)
+// @nuptechs-sentinel-probe/core — Notification module (webhook delivery)
 // ============================================================
 
 export { NotificationPort, NoopNotificationAdapter } from './notification.port.js';

@@ -95,7 +95,7 @@ export default function Settings() {
         <p className="text-xs text-slate-400">Install the SDK in your application to start sending events:</p>
         <pre className="bg-probe-bg rounded-lg p-4 text-xs font-mono text-slate-300 overflow-x-auto">
 {`// Node.js Express app
-import { createProbeMiddleware } from '@nuptechs-probe/sdk/node';
+import { createProbeMiddleware } from '@nuptechs-sentinel-probe/sdk/node';
 
 app.use(createProbeMiddleware({
   serverUrl: '${serverUrl}',
@@ -103,7 +103,7 @@ app.use(createProbeMiddleware({
 }));
 
 // Browser app
-import { installFetchInterceptor } from '@nuptechs-probe/sdk/browser';
+import { installFetchInterceptor } from '@nuptechs-sentinel-probe/sdk/browser';
 
 installFetchInterceptor({
   serverUrl: '${serverUrl}',
