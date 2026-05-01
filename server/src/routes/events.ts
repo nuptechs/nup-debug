@@ -8,6 +8,7 @@ import type { ProbeEvent } from '@nuptechs-sentinel-probe/core';
 import { z } from 'zod';
 import type { SessionManager } from '../services/session-manager.js';
 import { extractObservedFields } from '../services/field-extractor.js';
+import { extractRuntimeHits } from '../services/route-aggregator.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { sessionIdSchema } from './sessions.js';
 
@@ -167,6 +168,47 @@ eventsRouter.get('/:id/observed-fields', asyncHandler(async (req: Request, res: 
     ...(toTime !== undefined ? { toTime } : {}),
     stats: extraction.stats,
     observedFields: extraction.observedFields,
+  });
+}));
+
+// GET /api/sessions/:id/runtime-hits — Aggregate request counts per
+// canonical (method, path) tuple. Numeric IDs and UUIDs in the path
+// collapse to `:id` so /api/users/42 and /api/users/99 share a row.
+//
+// This is the input the Sentinel TripleOrphanDetector (Onda 2 / Vácuo 2)
+// expects from the runtime side. Cross-session aggregation belongs to
+// the orchestrator (Sentinel) for the same reason as observed-fields.
+eventsRouter.get('/:id/runtime-hits', asyncHandler(async (req: Request, res: Response) => {
+  const manager = getManager(req);
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
+
+  const session = await manager.getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  const fromTimeParam = req.query['fromTime'];
+  const toTimeParam = req.query['toTime'];
+  const fromTime = typeof fromTimeParam === 'string' ? Number(fromTimeParam) : undefined;
+  const toTime = typeof toTimeParam === 'string' ? Number(toTimeParam) : undefined;
+
+  const result = await manager.getEvents(sessionId, {
+    source: 'network',
+    limit: 50_000,
+    ...(fromTime !== undefined && Number.isFinite(fromTime) ? { fromTime } : {}),
+    ...(toTime !== undefined && Number.isFinite(toTime) ? { toTime } : {}),
+  });
+  const extraction = extractRuntimeHits(result.events);
+
+  res.json({
+    sessionId,
+    ...(fromTime !== undefined ? { fromTime } : {}),
+    ...(toTime !== undefined ? { toTime } : {}),
+    stats: extraction.stats,
+    hits: extraction.hits,
   });
 }));
 
