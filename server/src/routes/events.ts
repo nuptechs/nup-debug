@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import type { ProbeEvent } from '@nuptechs-sentinel-probe/core';
 import { z } from 'zod';
 import type { SessionManager } from '../services/session-manager.js';
+import { extractObservedFields } from '../services/field-extractor.js';
 import { asyncHandler } from '../middleware/async-handler.js';
 import { sessionIdSchema } from './sessions.js';
 
@@ -121,6 +122,52 @@ eventsRouter.get('/:id/timeline', asyncHandler(async (req: Request, res: Respons
   }
 
   res.json(timeline);
+}));
+
+// GET /api/sessions/:id/observed-fields — Aggregate top-level field names
+// from request/response bodies into the canonical {entity, fieldName,
+// occurrenceCount, lastSeenAt} shape consumed by Sentinel's
+// FieldDeathDetector (Onda 5 / Vácuo 5).
+//
+// This is per-session aggregation. Cross-session aggregation belongs to
+// an orchestrator (Sentinel) that lists the project's sessions and merges
+// counts — kept out of Probe to avoid coupling Probe to the Sentinel
+// project model.
+eventsRouter.get('/:id/observed-fields', asyncHandler(async (req: Request, res: Response) => {
+  const manager = getManager(req);
+  const idResult = sessionIdSchema.safeParse(req.params['id']);
+  if (!idResult.success) { res.status(400).json({ error: 'Invalid session ID' }); return; }
+  const sessionId = idResult.data;
+
+  const session = await manager.getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  // Pull all network events in one shot — capped to 50k by the manager
+  // call below. Larger sessions can paginate via fromTime/toTime; we
+  // surface those as optional query params so the caller can window.
+  const fromTimeParam = req.query['fromTime'];
+  const toTimeParam = req.query['toTime'];
+  const fromTime = typeof fromTimeParam === 'string' ? Number(fromTimeParam) : undefined;
+  const toTime = typeof toTimeParam === 'string' ? Number(toTimeParam) : undefined;
+
+  const result = await manager.getEvents(sessionId, {
+    source: 'network',
+    limit: 50_000,
+    ...(fromTime !== undefined && Number.isFinite(fromTime) ? { fromTime } : {}),
+    ...(toTime !== undefined && Number.isFinite(toTime) ? { toTime } : {}),
+  });
+  const extraction = extractObservedFields(result.events);
+
+  res.json({
+    sessionId,
+    ...(fromTime !== undefined ? { fromTime } : {}),
+    ...(toTime !== undefined ? { toTime } : {}),
+    stats: extraction.stats,
+    observedFields: extraction.observedFields,
+  });
 }));
 
 // GET /api/sessions/:id/groups — Get correlation groups
