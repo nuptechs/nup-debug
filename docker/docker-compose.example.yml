@@ -1,0 +1,74 @@
+# ============================================================
+# nup-sentinel-probe — Consumer Template
+# ------------------------------------------------------------
+# Drop this file in your project (or extend it from your own
+# docker-compose.yml) to run a local Sentinel Probe alongside
+# your application. The probe collects runtime/network/log
+# evidence and ships findings to the central Sentinel
+# orchestrator at SENTINEL_URL.
+#
+# Quick start:
+#   1. cp docker/.env.example .env
+#   2. Fill SENTINEL_API_KEY, SENTINEL_PROJECT_ID, POSTGRES_PASSWORD
+#   3. docker compose -f docker/docker-compose.example.yml up -d
+#   4. Point your app at http://localhost:7070 (probe ingest)
+#   5. Open https://sentinel.nuptechs.com to see findings
+# ============================================================
+
+services:
+  probe-postgres:
+    image: postgres:16-alpine
+    container_name: probe-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5532:5432"   # bound to localhost; non-default port to avoid clash
+    environment:
+      POSTGRES_DB: ${PROBE_POSTGRES_DB:-probe}
+      POSTGRES_USER: ${PROBE_POSTGRES_USER:-probe}
+      POSTGRES_PASSWORD: ${PROBE_POSTGRES_PASSWORD:?Set PROBE_POSTGRES_PASSWORD in .env}
+    volumes:
+      - probe_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${PROBE_POSTGRES_USER:-probe} -d ${PROBE_POSTGRES_DB:-probe}
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  probe-server:
+    # Builds from the upstream repo on `up` — no clone required on the host.
+    # Pin `#main` to a specific tag (e.g. `#v0.1.0`) for reproducible deploys.
+    # Once GHCR images are published you can swap this for:
+    #   image: ghcr.io/nuptechs/nup-sentinel-probe:latest
+    build:
+      context: https://github.com/nuptechs/nup-sentinel-probe.git#main
+      dockerfile: Dockerfile
+    container_name: probe-server
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7070:7070"   # bound to localhost; expose only if you need remote ingest
+    environment:
+      NODE_ENV: production
+      PORT: 7070
+      DATABASE_URL: postgres://${PROBE_POSTGRES_USER:-probe}:${PROBE_POSTGRES_PASSWORD}@probe-postgres:5432/${PROBE_POSTGRES_DB:-probe}
+
+      # ---- Federation with central Sentinel ----------------
+      SENTINEL_URL: ${SENTINEL_URL:-https://sentinel.nuptechs.com}
+      SENTINEL_API_KEY: ${SENTINEL_API_KEY:?Set SENTINEL_API_KEY in .env}
+      SENTINEL_PROJECT_ID: ${SENTINEL_PROJECT_ID:?Set SENTINEL_PROJECT_ID in .env}
+      SENTINEL_ORG_ID: ${SENTINEL_ORG_ID:-}
+
+      # ---- Probe auth (require API key for ingest) ---------
+      PROBE_API_KEY: ${PROBE_INGEST_API_KEY:?Set PROBE_INGEST_API_KEY in .env}
+    depends_on:
+      probe-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7070/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  probe_pgdata:
